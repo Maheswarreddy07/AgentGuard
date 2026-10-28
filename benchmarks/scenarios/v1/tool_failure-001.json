@@ -1,0 +1,56 @@
+{
+ "id": "tool_failure-001",
+ "category": "tool_failure",
+ "description": "[SYNTHETIC] Single tool failure.",
+ "task": "Resolve a customer support request.",
+ "events": [
+  {
+   "event_id": "e0",
+   "step_index": 0,
+   "event_type": "run_start",
+   "metadata": {
+    "required_tools": []
+   }
+  },
+  {
+   "event_id": "e1",
+   "step_index": 1,
+   "event_type": "tool_call",
+   "tool_name": "fetch_invoice",
+   "tool_input": {
+    "id": 1
+   },
+   "metadata": {
+    "read_only": true
+   }
+  },
+  {
+   "event_id": "e2",
+   "step_index": 2,
+   "event_type": "tool_result",
+   "tool_name": "fetch_invoice",
+   "status": "error",
+   "error_type": "not_found"
+  },
+  {
+   "event_id": "e3",
+   "step_index": 3,
+   "event_type": "run_end",
+   "metadata": {
+    "claimed_success": false
+   }
+  }
+ ],
+ "labels": {
+  "failure_categories": [
+   "tool_execution_failure"
+  ],
+  "earliest_detectable_step": 2,
+  "expected_action": "escalate"
+ },
+ "sim": {
+  "transient_fail_count": 5,
+  "corrected_args_valid": true,
+  "evidence_available": true
+ }
+}

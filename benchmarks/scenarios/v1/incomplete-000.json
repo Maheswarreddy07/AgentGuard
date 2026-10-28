@@ -1,0 +1,60 @@
+{
+ "id": "incomplete-000",
+ "category": "incomplete",
+ "description": "[SYNTHETIC] Run never ended.",
+ "task": "Resolve a customer support request.",
+ "events": [
+  {
+   "event_id": "e0",
+   "step_index": 0,
+   "event_type": "run_start",
+   "metadata": {
+    "required_tools": []
+   }
+  },
+  {
+   "event_id": "e1",
+   "step_index": 1,
+   "event_type": "tool_call",
+   "tool_name": "lookup_order",
+   "tool_input": {
+    "order_id": 5932
+   },
+   "metadata": {
+    "read_only": true,
+    "arg_schema": {
+     "required": [
+      "order_id"
+     ],
+     "types": {
+      "order_id": "integer"
+     }
+    }
+   }
+  },
+  {
+   "event_id": "e2",
+   "step_index": 2,
+   "event_type": "tool_result",
+   "tool_name": "lookup_order",
+   "tool_output": {
+    "status": "shipped"
+   },
+   "metadata": {
+    "entity": "order-1"
+   }
+  }
+ ],
+ "labels": {
+  "failure_categories": [
+   "incomplete_execution"
+  ],
+  "earliest_detectable_step": 2,
+  "expected_action": "none"
+ },
+ "sim": {
+  "transient_fail_count": 0,
+  "corrected_args_valid": true,
+  "evidence_available": true
+ }
+}

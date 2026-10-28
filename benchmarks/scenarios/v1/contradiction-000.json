@@ -1,0 +1,100 @@
+{
+ "id": "contradiction-000",
+ "category": "contradiction",
+ "description": "[SYNTHETIC] Two results for one entity disagree.",
+ "task": "Resolve a customer support request.",
+ "events": [
+  {
+   "event_id": "e0",
+   "step_index": 0,
+   "event_type": "run_start",
+   "metadata": {
+    "required_tools": []
+   }
+  },
+  {
+   "event_id": "e1",
+   "step_index": 1,
+   "event_type": "tool_call",
+   "tool_name": "lookup_order",
+   "tool_input": {
+    "order_id": 2349
+   },
+   "metadata": {
+    "read_only": true,
+    "arg_schema": {
+     "required": [
+      "order_id"
+     ],
+     "types": {
+      "order_id": "integer"
+     }
+    }
+   }
+  },
+  {
+   "event_id": "e2",
+   "step_index": 2,
+   "event_type": "tool_result",
+   "tool_name": "lookup_order",
+   "tool_output": {
+    "status": "paid"
+   },
+   "metadata": {
+    "entity": "o7"
+   }
+  },
+  {
+   "event_id": "e3",
+   "step_index": 3,
+   "event_type": "tool_call",
+   "tool_name": "lookup_order",
+   "tool_input": {
+    "order_id": 6313
+   },
+   "metadata": {
+    "read_only": true,
+    "arg_schema": {
+     "required": [
+      "order_id"
+     ],
+     "types": {
+      "order_id": "integer"
+     }
+    }
+   }
+  },
+  {
+   "event_id": "e4",
+   "step_index": 4,
+   "event_type": "tool_result",
+   "tool_name": "lookup_order",
+   "tool_output": {
+    "status": "unpaid"
+   },
+   "metadata": {
+    "entity": "o7"
+   }
+  },
+  {
+   "event_id": "e5",
+   "step_index": 5,
+   "event_type": "run_end",
+   "metadata": {
+    "claimed_success": true
+   }
+  }
+ ],
+ "labels": {
+  "failure_categories": [
+   "contradictory_tool_results"
+  ],
+  "earliest_detectable_step": 4,
+  "expected_action": "request_evidence"
+ },
+ "sim": {
+  "transient_fail_count": 0,
+  "corrected_args_valid": true,
+  "evidence_available": true
+ }
+}
