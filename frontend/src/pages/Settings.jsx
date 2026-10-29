@@ -1,8 +1,8 @@
 import { State, useApi } from "../api";
 export default function Settings() {
-  const h = useApi<{ status: string; database: string }>("/health");
-  const s = useApi<{ llm_configured: boolean; llm_provider: string | null; ai_diagnosis_enabled: boolean; max_retries: number; retention: string; rules: string[]; redaction: Record<string, unknown> }>("/api/v1/settings");
-  return (<><h2>Settings &amp; Integrations</h2><State loading={h.loading || s.loading} error={h.error || s.error} />
+    const h = useApi("/health");
+    const s = useApi("/api/v1/settings");
+    return (<><h2>Settings &amp; Integrations</h2><State loading={h.loading || s.loading} error={h.error || s.error}/>
     {h.data && <div className="card"><h3>Health</h3>Backend: {h.data.status} · Database: {h.data.database}</div>}
     {s.data && <><div className="card"><h3>LLM provider</h3>{s.data.llm_configured ? `Configured (${s.data.llm_provider ?? "unnamed"}); key not shown` : "Not configured. The deterministic engine works without it."} · AI diagnosis: {s.data.ai_diagnosis_enabled ? "on" : "off"}</div>
       <div className="card"><h3>Limits &amp; retention</h3>Max retries: {s.data.max_retries} · Retention: {s.data.retention}</div>

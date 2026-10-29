@@ -1,4 +1,5 @@
-import json, uuid
+import json, time, uuid
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
@@ -12,6 +13,8 @@ from app.db.models import BenchmarkRow, EventRow, TraceRow
 from app.evaluation.runner import run_benchmark
 from app.evaluation.scenario import Scenario, load_scenarios
 from app.recovery.policy import decide, execute
+from app.services.diagnosis import diagnose, provider_from_env
+from app.services.retention import purge_older_than
 from app.schemas.events import EventType
 from app.db.session import make_engine, make_session_factory
 from app.detectors.rules import run_all
@@ -37,12 +40,31 @@ class BenchRequest(BaseModel):
 class RecoverRequest(BaseModel):
     sim: dict = Field(default_factory=dict)  # simulated environment only; no live actions are executed
 
-def create_app(database_url: str | None = None, scenario_dir: Path | None = None) -> FastAPI:
+def create_app(database_url: str | None = None, scenario_dir: Path | None = None, llm=None, rate_limit: int | None = None) -> FastAPI:
     scen_dir = Path(scenario_dir or DEFAULT_SCENARIOS)
     app = FastAPI(title="AgentGuard", version="0.1.0")
     app.add_middleware(CORSMiddleware, allow_origins=[o for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o], allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
     engine = make_engine(database_url)
     factory = make_session_factory(engine)
+    llm_provider = llm if llm is not None else provider_from_env()
+    retention_days = int(os.getenv("RETENTION_DAYS", "0"))
+    limit = rate_limit if rate_limit is not None else int(os.getenv("RATE_LIMIT_PER_MIN", "600"))
+    hits: dict[str, deque] = defaultdict(deque)
+    if retention_days > 0:
+        with factory() as _s:
+            purge_older_than(_s, retention_days)  # enforced at startup
+
+    @app.middleware("http")
+    async def rate_limiter(request: Request, call_next):
+        if limit > 0 and request.url.path != "/health":
+            ip, now = (request.client.host if request.client else "?"), time.monotonic()
+            q = hits[ip]
+            while q and now - q[0] > 60:
+                q.popleft()
+            if len(q) >= limit:
+                return JSONResponse(status_code=429, headers={"Retry-After": "60"}, content={"error": {"code": "rate_limited", "message": "Too many requests"}})
+            q.append(now)
+        return await call_next(request)
 
     def get_db():
         with factory() as s:
@@ -121,14 +143,25 @@ def create_app(database_url: str | None = None, scenario_dir: Path | None = None
     def settings():
         from app.recovery.policy import MAX_RETRIES
         return {"llm_configured": bool(os.getenv("LLM_API_KEY")), "llm_provider": os.getenv("LLM_PROVIDER") or None,
-                "ai_diagnosis_enabled": False, "max_retries": MAX_RETRIES, "max_events_per_request": MAX_EVENTS_PER_REQUEST,
+                "ai_diagnosis_enabled": llm_provider is not None, "rate_limit_per_min": limit, "max_retries": MAX_RETRIES, "max_events_per_request": MAX_EVENTS_PER_REQUEST,
                 "redaction": {"sensitive_keys": True, "emails": True, "api_keys": True, "ssn": True, "max_string_chars": 2000},
-                "retention": "not enforced yet (no automatic deletion implemented)",
+                "retention": (f"{retention_days} days, enforced at startup" if retention_days > 0 else "disabled (set RETENTION_DAYS)"),
                 "rules": [r.__name__ for r in __import__("app.detectors.rules", fromlist=["ALL_RULES"]).ALL_RULES]}
 
     @app.post("/api/v1/traces/{trace_id}/analyze")
     def analyze(trace_id: str, db: Session = Depends(get_db)):
-        return analysis(trace_id, db)
+        base = analysis(trace_id, db)
+        base["ai_diagnosis"] = diagnose(llm_provider, load_events(db, trace_id), base["findings"])
+        return base
+
+    @app.get("/api/v1/metrics/trends")
+    def trends(db: Session = Depends(get_db)):
+        days: dict[str, dict] = {}
+        for t in db.scalars(select(TraceRow)):
+            d = days.setdefault(t.created_at.date().isoformat(), {"date": t.created_at.date().isoformat(), "runs": 0, "with_findings": 0})
+            d["runs"] += 1
+            d["with_findings"] += bool(run_all(load_events(db, t.trace_id)))
+        return {"items": [days[k] for k in sorted(days)]}
 
     @app.post("/api/v1/traces/{trace_id}/recover")
     def recover(trace_id: str, body: RecoverRequest, db: Session = Depends(get_db)):

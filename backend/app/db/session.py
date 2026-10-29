@@ -12,7 +12,8 @@ def make_engine(url: str | None = None):
         if ":memory:" in url:
             kw["poolclass"] = StaticPool
     eng = create_engine(url, **kw)
-    Base.metadata.create_all(eng)  # Alembic manages prod; this keeps dev/tests zero-config
+    if os.getenv("AUTO_CREATE_TABLES", "1") == "1":  # prod sets 0 and uses `alembic upgrade head`
+        Base.metadata.create_all(eng)
     return eng
 
 def make_session_factory(engine):

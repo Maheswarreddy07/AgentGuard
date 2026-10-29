@@ -12,14 +12,22 @@ def tool_failure(events: list[Event]) -> list[Finding]:
             for e in events if e.event_type == EventType.TOOL_RESULT and e.status == Status.ERROR]
 
 def retry_loop(events: list[Event], threshold: int = 3) -> list[Finding]:
-    fails: dict[tuple, list[str]] = {}
+    """Consecutive identical failures of one tool (a success of that tool resets the streak)."""
+    streak: dict[str, tuple[str | None, list[str]]] = {}
+    hits: dict[tuple, list[str]] = {}
     for e in events:
-        if e.event_type == EventType.TOOL_RESULT and e.status == Status.ERROR:
-            fails.setdefault((e.tool_name, e.error_type), []).append(e.event_id)
+        if e.event_type != EventType.TOOL_RESULT:
+            continue
+        if e.status == Status.OK:
+            streak.pop(e.tool_name, None); continue
+        et, ids = streak.get(e.tool_name, (None, []))
+        ids = ids + [e.event_id] if et == e.error_type else [e.event_id]
+        streak[e.tool_name] = (e.error_type, ids)
+        if len(ids) >= threshold:
+            hits[(e.tool_name, e.error_type)] = ids
     return [Finding(category=Category.RETRY_LOOP, severity=Severity.HIGH, evidence_event_ids=ids,
-            explanation=f"Tool '{k[0]}' failed {len(ids)} times with the same error.",
-            recommended_action="stop_and_escalate")
-            for k, ids in fails.items() if len(ids) >= threshold]
+            explanation=f"Tool '{k[0]}' failed {len(ids)} times in a row with the same error.", recommended_action="stop_and_escalate")
+            for k, ids in hits.items()]
 
 def unauthorized_action(events: list[Event]) -> list[Finding]:
     """A consequential call needs an earlier HUMAN_APPROVAL (approved=True) whose metadata['approves_tool'] names the tool."""

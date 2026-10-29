@@ -1,4 +1,5 @@
 import json
+import yaml
 from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,5 +26,8 @@ class Scenario(BaseModel):
     sim: Sim = Sim()         # used only by the simulated recovery executor
 
 def load_scenarios(root: Path, ids: set[str] | None = None) -> list[Scenario]:
-    out = [Scenario.model_validate(json.loads(p.read_text())) for p in sorted(Path(root).rglob("*.json"))]
+    def read(p: Path):
+        return json.loads(p.read_text()) if p.suffix == ".json" else yaml.safe_load(p.read_text())
+    files = sorted(f for f in Path(root).rglob("*") if f.suffix in (".json", ".yaml", ".yml"))
+    out = [Scenario.model_validate(read(p)) for p in files]
     return [s for s in out if not ids or s.id in ids]

@@ -1,38 +1,95 @@
-# AgentGuard — AI agent reliability layer (work in progress)
+# AgentGuard — AI agent reliability layer
 
-Observe agent traces, detect failures with deterministic rules, localize the earliest detectable event, apply *safe* simulated recovery, and benchmark protected vs baseline runs. Works with no paid LLM key.
+Observe agent traces, detect failures with deterministic rules, find the earliest detectable event, apply **safe, simulated** recovery, and benchmark protected vs unprotected runs. The core works with no paid LLM key. This is a portfolio project, not a production-certified product.
 
-## Status (honest)
-Built and tested: trace ingestion API (redaction, idempotent/out-of-order events), 10 detectors, localization, recovery policy + simulator, 125-scenario synthetic benchmark + CLI, benchmark/scenario/recovery APIs, Python SDK, React dashboard (5 pages).
-**Not built yet:** AI-assisted diagnosis, Alembic migrations (tables auto-created), rate limiting, retention enforcement, failure-trend chart, E2E browser tests, Docker verification (no Docker in the dev sandbox), deployment, screenshots, YAML scenarios.
+## Run it (step by step)
 
-## Run
+Prerequisites: Python 3.12+, Node 20+ and npm, git.
+
+1. **Backend setup**
+   ```bash
+   cd backend
+   python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
+   pip install -e ".[dev]"
+   ```
+2. **Load synthetic demo traces** (optional but recommended)
+   ```bash
+   python -m app.seed
+   ```
+3. **Start the API** (keep this terminal open)
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
+   Check http://localhost:8000/health and interactive docs at http://localhost:8000/docs.
+4. **Start the frontend** in a second terminal
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   Open http://localhost:5173 (Vite proxies `/api` to port 8000).
+5. **Try the main flow in the UI:** Traces → open a trace → read the findings → *Run safe recovery simulation* → Benchmark Lab → *Run baseline vs protected* → export JSON/CSV.
+
+### Run the benchmark from the command line
+```bash
+cd backend
+python -m app.evaluation.cli generate            # regenerate template scenarios (seeded)
+python -m app.evaluation.adversarial             # regenerate hand-authored adversarial scenarios
+python -m app.evaluation.cli run --json ../benchmarks/results/latest.json --csv ../benchmarks/results/latest.csv
+python -m app.evaluation.cli run --ids adv-02,adv-07      # selected scenarios only
+python ../scripts/render_results.py              # refresh docs/evaluation.md and the table below
 ```
-cd backend && pip install -e ".[dev]" && python -m app.seed && uvicorn app.main:app --reload   # API on :8000 (docs at /docs)
-cd frontend && npm install && npm run dev                                                    # UI on :5173
-```
-Tests: `cd backend && python -m pytest` · `cd sdk && python -m pytest` · `cd frontend && npm test`
-Benchmark: see [docs/evaluation.md](docs/evaluation.md).
 
-## Instrument an agent
+### Run all tests
+```bash
+cd backend && python -m pytest        # API, detectors, localization, recovery, diagnosis, Alembic, metrics
+cd sdk && python -m pytest            # SDK (also posts to the real API)
+cd frontend && npm test               # React component/integration tests (mocked API)
+```
+
+### Docker (written but NOT verified — no Docker in the dev sandbox)
+```bash
+docker compose up --build      # UI http://localhost:8080, API http://localhost:8000
+```
+If it fails, run the non-Docker steps above and open an issue with the log.
+
+### Optional: AI-assisted diagnosis
+Copy `.env.example` to `.env` and set `LLM_PROVIDER=anthropic`, `LLM_API_KEY`, `LLM_MODEL`. Without them the button reports "disabled" and everything else works. This path is tested with fake providers only; it has not been run against a live model.
+
+### Production database
+Set `DATABASE_URL` to PostgreSQL, `AUTO_CREATE_TABLES=0`, then `cd backend && alembic upgrade head`.
+
+## Instrument your own agent
 ```python
 from agentguard_sdk import Tracer, http_transport
 tracer = Tracer("my-agent", http_transport("http://localhost:8000"))
-with tracer.run(required_tools=["lookup"]) as run:
-    run.call("lookup", {"order_id": 1}, fn=lookup, read_only=True)
+with tracer.run(required_tools=["lookup_order"]) as run:
+    run.call("lookup_order", {"order_id": 1}, fn=lookup_order, read_only=True,
+             arg_schema={"required": ["order_id"], "types": {"order_id": "integer"}})
+    run.approval("issue_refund", approved=True)
+    run.call("issue_refund", {"amount": 20}, fn=issue_refund, consequential=True)
     run.finish(claimed_success=True)
 ```
+Detection quality depends on what you declare (`arg_schema`, `required_tools`, `consequential`, `must_precede`, `constraints`). Undeclared problems are not detected.
 
-## Results (synthetic, simulated)
+## Results (synthetic, simulated — read [docs/evaluation.md](docs/evaluation.md) first)
+<!-- RESULTS -->
 | Metric (denominator) | Baseline | Protected |
 |---|---|---|
-| Task success (all 125 scenarios) | 28.8% | 41.6% (Δ 95% CI 7.2 to 19.2 pts) |
-| Safe outcome (all scenarios) | 28.8% | 94.4% (Δ 95% CI 56.8 to 73.6 pts) |
-| Detection micro P / R / F1 | n/a | 100.0% / 100.0% / 100.0% |
-| Macro-F1 (categories with support) | n/a | 100.0% |
-| False-positive rate (clean scenarios, n=36) | n/a | 0.0% |
-| Localization accuracy (n=89 labelled) | n/a | 100.0%, mean abs step error 0.00 |
-| Recovery success (attempted recoveries, n=26) | n/a | 61.5% |
-| Unnecessary intervention rate (clean scenarios) | n/a | 0.0% |
-| Added latency, mean ± std per scenario | n/a | 0.013 ± 0.005 ms |
+| Task success (all 135 scenarios) | 28.9% | 42.2% (Δ 95% CI 7.4 to 20.0 pts) |
+| Safe outcome (all scenarios) | 28.9% | 93.3% (Δ 95% CI 56.3 to 72.6 pts) |
+| Detection micro P / R / F1 | n/a | 99.3% / 98.5% / 98.9% |
+| Macro-F1 (categories with support) | n/a | 98.8% |
+| False-positive rate (clean scenarios, n=39) | n/a | 2.6% |
+| Localization accuracy (n=96 labelled) | n/a | 97.9%, mean abs step error 0.01 |
+| Recovery success (attempted recoveries, n=30) | n/a | 66.7% |
+| Unnecessary intervention rate (clean scenarios) | n/a | 2.6% |
+| Added latency, mean ± std per scenario | n/a | 0.028 ± 0.014 ms |
 | Cost per run | n/a | $0 (no paid model calls) |
+<!-- /RESULTS -->
+
+## What exists
+10 deterministic detectors · localization (origin / first detectable / observed) · recovery policy + simulator · 135 scenarios (JSON or YAML) · benchmark API with background execution · SDK · React dashboard (Overview with trend chart, Traces, Benchmark Lab, Scenarios, Settings) · rate limiting · redaction · retention (at startup) · Alembic migration.
+
+## Known limitations
+No authentication; rate limiting is in-memory per process (and per proxy IP behind a proxy); retention runs at startup only; no live recovery adapters; no browser (Playwright) E2E tests — the frontend is tested with mocked API calls and the full journey is tested at API level; Docker/Compose and deployment unverified; screenshots not included (see docs/portfolio.md); filtering by severity/category/date in the Trace Explorer is not implemented (agent filter only).

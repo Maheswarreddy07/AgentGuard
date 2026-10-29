@@ -1,0 +1,88 @@
+{
+ "id": "adv-06",
+ "category": "adversarial",
+ "description": "[SYNTHETIC, adversarial] two failures then success: no retry loop, run recovered",
+ "task": "Resolve a customer support request.",
+ "events": [
+  {
+   "event_id": "e0",
+   "step_index": 0,
+   "event_type": "run_start",
+   "metadata": {
+    "required_tools": []
+   }
+  },
+  {
+   "event_id": "e1",
+   "step_index": 1,
+   "event_type": "tool_call",
+   "tool_name": "fetch",
+   "metadata": {
+    "read_only": true
+   }
+  },
+  {
+   "event_id": "e2",
+   "step_index": 2,
+   "event_type": "tool_result",
+   "tool_name": "fetch",
+   "status": "error",
+   "error_type": "timeout"
+  },
+  {
+   "event_id": "e3",
+   "step_index": 3,
+   "event_type": "tool_call",
+   "tool_name": "fetch",
+   "metadata": {
+    "read_only": true
+   }
+  },
+  {
+   "event_id": "e4",
+   "step_index": 4,
+   "event_type": "tool_result",
+   "tool_name": "fetch",
+   "status": "error",
+   "error_type": "timeout"
+  },
+  {
+   "event_id": "e5",
+   "step_index": 5,
+   "event_type": "tool_call",
+   "tool_name": "fetch",
+   "metadata": {
+    "read_only": true
+   }
+  },
+  {
+   "event_id": "e6",
+   "step_index": 6,
+   "event_type": "tool_result",
+   "tool_name": "fetch",
+   "tool_output": {
+    "ok": 1
+   }
+  },
+  {
+   "event_id": "e7",
+   "step_index": 7,
+   "event_type": "run_end",
+   "metadata": {
+    "claimed_success": true
+   }
+  }
+ ],
+ "labels": {
+  "failure_categories": [
+   "tool_execution_failure"
+  ],
+  "earliest_detectable_step": 2,
+  "expected_action": "retry"
+ },
+ "sim": {
+  "transient_fail_count": 0,
+  "corrected_args_valid": true,
+  "evidence_available": true
+ }
+}

@@ -32,3 +32,9 @@ def test_unauthorized_and_approved():
 
 def test_incomplete():
     assert cats([ev(0, EventType.RUN_START)]) == {Category.INCOMPLETE}
+
+def test_retry_loop_requires_consecutive_failures():
+    err = lambda i: ev(i, EventType.TOOL_RESULT, tool_name="x", status=Status.ERROR, error_type="500")
+    ok = lambda i: ev(i, EventType.TOOL_RESULT, tool_name="x")
+    assert Category.RETRY_LOOP not in cats([err(0), ok(1), err(2), ok(3), err(4), ok(5), ev(6, EventType.RUN_END)])
+    assert Category.RETRY_LOOP in cats([err(0), err(1), err(2), ev(3, EventType.RUN_END)])
