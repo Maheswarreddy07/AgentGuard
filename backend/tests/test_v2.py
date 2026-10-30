@@ -69,3 +69,7 @@ def test_old_database_is_upgraded_in_place(tmp_path):
     con.execute("insert into traces values ('legacy','a','2026-01-01 00:00:00')"); con.commit(); con.close()
     c = TestClient(create_app(f"sqlite:///{db}", tmp_path))  # adds columns + backfills
     assert c.get("/api/v1/traces").status_code == 200
+    # a trace stored by the previous version (summary columns present, category_severity missing) is backfilled
+    con = sqlite3.connect(db); con.execute("update traces set category_severity = NULL"); con.commit(); con.close()
+    c2 = TestClient(create_app(f"sqlite:///{db}", tmp_path))
+    assert c2.get("/api/v1/metrics/overview").status_code == 200

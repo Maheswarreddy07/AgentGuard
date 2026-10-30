@@ -150,6 +150,12 @@ def unsupported_success(events: list[Event]) -> list[Finding]:
 ALL_RULES = [invalid_args, tool_failure, retry_loop, contradiction, missing_evidence, workflow_invariant,
              goal_constraint, unsupported_success, unauthorized_action, incomplete]
 
-def run_all(events: list[Event]) -> list[Finding]:
+def run_all(events: list[Event], disabled=frozenset(), retry_loop_threshold: int = 3) -> list[Finding]:
+    """Run every enabled rule. `disabled` holds rule function names; the retry-loop threshold is adjustable."""
     ordered = sorted(events, key=lambda e: e.step_index)
-    return [f for rule in ALL_RULES for f in rule(ordered)]
+    out: list[Finding] = []
+    for rule in ALL_RULES:
+        if rule.__name__ in disabled:
+            continue
+        out += rule(ordered, retry_loop_threshold) if rule is retry_loop else rule(ordered)
+    return out

@@ -29,7 +29,7 @@ def _call_before(events: list[Event], result_id: str) -> Event | None:
     calls = [e for e in events if e.event_type == EventType.TOOL_CALL and e.tool_name == res.tool_name and e.step_index < res.step_index]
     return calls[-1] if calls else None
 
-def decide(events: list[Event], findings: list[Finding]) -> Decision:
+def decide(events: list[Event], findings: list[Finding], max_retries: int = MAX_RETRIES) -> Decision:
     cats = {f.category for f in findings}
     if cats & {C.UNAUTHORIZED, C.WORKFLOW, C.GOAL_CONSTRAINT}:
         return Decision(action="escalate", reason="Policy/authorization violation: human approval required.")
@@ -50,11 +50,11 @@ def decide(events: list[Event], findings: list[Finding]) -> Decision:
         res = next(e for e in events if e.event_id == f.evidence_event_ids[0])
         call = _call_before(events, res.event_id)
         if call and call.metadata.get("read_only") and not call.metadata.get("consequential") and res.error_type in TRANSIENT:
-            return Decision(action="retry", reason="Transient failure on read-only tool: bounded retry with backoff.", max_attempts=MAX_RETRIES)
+            return Decision(action="retry", reason="Transient failure on read-only tool: bounded retry with backoff.", max_attempts=max_retries)
         return Decision(action="escalate", reason="Failure is non-transient or tool is not known read-only.")
     return Decision(action="none", reason="No actionable finding.")
 
-def execute(decision: Decision, sim: dict) -> Outcome:
+def execute(decision: Decision, sim: dict, max_retries: int = MAX_RETRIES) -> Outcome:
     a = decision.action
     if a == "none":
         return Outcome(attempted=False, recovered=False, attempts=0, terminal="none")
@@ -64,7 +64,7 @@ def execute(decision: Decision, sim: dict) -> Outcome:
         return Outcome(attempted=False, recovered=False, attempts=0, terminal="escalated")
     if a == "retry":
         fails = int(sim.get("transient_fail_count", 0))
-        ok = fails < MAX_RETRIES
-        return Outcome(attempted=True, recovered=ok, attempts=fails + 1 if ok else MAX_RETRIES, terminal="recovered" if ok else "escalated")
+        ok = fails < max_retries
+        return Outcome(attempted=True, recovered=ok, attempts=fails + 1 if ok else max_retries, terminal="recovered" if ok else "escalated")
     ok = bool(sim.get("corrected_args_valid" if a == "correct_args" else "evidence_available", False))
     return Outcome(attempted=True, recovered=ok, attempts=1, terminal="recovered" if ok else "escalated")

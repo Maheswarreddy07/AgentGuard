@@ -12,14 +12,15 @@ CATEGORIES = {
  "goal_constraint_violation": {"label": "Task limit exceeded", "why": "A tool input went beyond a limit set for this task (for example a refund above the allowed amount).", "fix": "Block and request human approval."},
 }
 SEVERITIES = ["low", "medium", "high", "critical"]
+SEVERITY_COLORS = {"critical": "#ff5d73", "high": "#ff9f43", "medium": "#ffd166", "low": "#7aa2f7"}
 SEV_RANK = {s: i + 1 for i, s in enumerate(SEVERITIES)}
 ACTIONS = {
- "none": {"label": "No action needed", "plain": "Nothing actionable was found, so AgentGuard leaves the run alone."},
- "retry": {"label": "Retry safely", "plain": "A transient failure on a read-only tool: retry with a small, bounded number of attempts."},
- "correct_args": {"label": "Fix the arguments", "plain": "Correct the inputs against the tool schema and retry once (read-only tools only)."},
- "request_evidence": {"label": "Ask for more evidence", "plain": "Gather the missing or conflicting information before the agent concludes."},
- "escalate": {"label": "Hand to a human", "plain": "Unsafe to continue automatically. A person must approve or take over."},
- "stop": {"label": "Stop the run", "plain": "Repeating further is unsafe. Halt and investigate."},
+ "none": {"icon": "✓", "label": "No action needed", "plain": "Nothing actionable was found, so AgentGuard leaves the run alone."},
+ "retry": {"icon": "↻", "label": "Retry safely", "plain": "A transient failure on a read-only tool: retry with a small, bounded number of attempts."},
+ "correct_args": {"icon": "✎", "label": "Fix the arguments", "plain": "Correct the inputs against the tool schema and retry once (read-only tools only)."},
+ "request_evidence": {"icon": "🔎", "label": "Ask for more evidence", "plain": "Gather the missing or conflicting information before the agent concludes."},
+ "escalate": {"icon": "🙋", "label": "Hand to a human", "plain": "Unsafe to continue automatically. A person must approve or take over."},
+ "stop": {"icon": "⛔", "label": "Stop the run", "plain": "Repeating further is unsafe. Halt and investigate."},
 }
 METRICS = {
  "precision": {"label": "Precision", "plain": "Of the failures AgentGuard flagged, how many were real. High = few false alarms."},
@@ -34,4 +35,28 @@ METRICS = {
  "unnecessary_intervention": {"label": "Unnecessary interventions", "plain": "Share of good runs where AgentGuard stepped in anyway."},
  "latency": {"label": "Added latency", "plain": "Extra time AgentGuard's analysis adds per run."},
 }
-def meta(): return {"categories": CATEGORIES, "severities": SEVERITIES, "actions": ACTIONS, "metrics": METRICS}
+RULES = {
+ "invalid_args": {"label": "Invalid tool arguments", "description": "Checks every tool call's inputs against the argument schema you declared.", "needs": "an arg_schema on the call"},
+ "tool_failure": {"label": "Tool failures", "description": "Flags any tool result that came back as an error.", "needs": "nothing extra"},
+ "retry_loop": {"label": "Retry loops", "description": "Flags the same tool failing the same way several times in a row.", "needs": "nothing extra (threshold is adjustable)"},
+ "contradiction": {"label": "Contradictory results", "description": "Flags two successful results about the same entity that disagree.", "needs": "an entity name on results"},
+ "missing_evidence": {"label": "Missing evidence", "description": "Flags runs that end without a successful call to a tool the task required.", "needs": "required_tools on the run"},
+ "workflow_invariant": {"label": "Step order", "description": "Flags steps that happen before a step they depend on.", "needs": "must_precede rules on the run"},
+ "goal_constraint": {"label": "Task limits", "description": "Flags tool inputs that exceed a limit set for the task.", "needs": "constraints on the run"},
+ "unsupported_success": {"label": "False success claims", "description": "Flags runs that claim success while a tool's latest result is still an error.", "needs": "the run's final success claim"},
+ "unauthorized_action": {"label": "Unapproved actions", "description": "Flags consequential actions that ran without a prior matching human approval.", "needs": "consequential marked on the call"},
+ "incomplete": {"label": "Unfinished runs", "description": "Flags traces that never reached an end event.", "needs": "nothing extra"},
+}
+ACTIVITY = {
+ "setup_completed": "First admin account created", "login": "Signed in", "login_failed": "Failed sign-in", "logout": "Signed out", "password_changed": "Password changed",
+ "user_created": "User created", "user_updated": "User updated", "password_reset": "Password reset by admin", "api_key_created": "API key created", "api_key_revoked": "API key revoked",
+ "settings_updated": "Settings changed", "retention_run": "Old data cleaned up", "benchmark_started": "Benchmark run", "recovery_simulated": "Recovery simulated",
+ "scenario_added": "Scenario added", "demo_seeded": "Demo data loaded", "ai_diagnosis_requested": "AI diagnosis requested",
+}
+SECURITY_ACTIONS = {"setup_completed", "login", "login_failed", "logout", "password_changed", "user_created", "user_updated", "password_reset", "api_key_created", "api_key_revoked", "settings_updated", "retention_run"}
+ROLES = [
+ {"key": "viewer", "label": "Viewer", "plain": "Can look at everything but change nothing."},
+ {"key": "member", "label": "Member", "plain": "Can also run benchmarks and simulations, load demo data, add scenarios and send traces."},
+ {"key": "admin", "label": "Admin", "plain": "Can also manage people, API keys and settings, and see the security history."},
+]
+def meta(): return {"categories": CATEGORIES, "severities": SEVERITIES, "severity_colors": SEVERITY_COLORS, "roles": ROLES, "actions": ACTIONS, "metrics": METRICS}

@@ -43,16 +43,31 @@ def refresh_summary(db: Session, trace_id: str) -> None:
     """Cache detector results on the trace row so lists/filters/overview don't re-run detectors."""
     t = db.get(TraceRow, trace_id)
     evs = load_events(db, trace_id)
-    fs = run_all(evs)
+    from app.services.settings import load_config
+    cfg = load_config(db)
+    fs = run_all(evs, cfg.disabled_rules, cfg.retry_loop_threshold)
     top = max(fs, key=lambda f: SEV_RANK[f.severity.value], default=None)
     t.n_events, t.status = len(evs), ("flagged" if fs else "clean")
     t.max_severity = top.severity.value if top else None
     t.categories = sorted({f.category.value for f in fs})
+    cs: dict = {}
+    for f in fs:
+        if SEV_RANK[f.severity.value] > SEV_RANK.get(cs.get(f.category.value, ""), 0):
+            cs[f.category.value] = f.severity.value
+    t.category_severity = cs
     t.headline = top.explanation[:500] if top else None
     t.updated_at = datetime.now(timezone.utc)
 
 def backfill_summaries(db: Session) -> int:
-    ids = list(db.scalars(select(TraceRow.trace_id).where((TraceRow.updated_at.is_(None)) | (TraceRow.status.is_(None)))))
+    ids = list(db.scalars(select(TraceRow.trace_id).where((TraceRow.updated_at.is_(None)) | (TraceRow.status.is_(None)) | (TraceRow.category_severity.is_(None)))))
+    for i in ids:
+        refresh_summary(db, i)
+    db.commit()
+    return len(ids)
+
+
+def refresh_all(db: Session) -> int:
+    ids = list(db.scalars(select(TraceRow.trace_id)))
     for i in ids:
         refresh_summary(db, i)
     db.commit()

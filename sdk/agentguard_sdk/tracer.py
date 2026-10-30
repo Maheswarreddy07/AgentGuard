@@ -1,6 +1,6 @@
 """Minimal SDK. Records observable actions only (never model reasoning). Dependency-free (stdlib).
 
-    tracer = Tracer("my-agent", transport=http_transport("http://localhost:8000"))
+    tracer = Tracer("my-agent", transport=http_transport("http://localhost:8000", api_key="ag_..."))
     with tracer.run(required_tools=["lookup"]) as run:
         out = run.call("lookup", {"order_id": 1}, fn=lookup, read_only=True)
         run.finish(claimed_success=True)
@@ -9,10 +9,10 @@ import json, urllib.request, uuid
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-def http_transport(base_url: str, timeout: float = 5.0) -> Callable[[str, list[dict]], None]:
+def http_transport(base_url: str, api_key: str | None = None, timeout: float = 5.0) -> Callable[[str, list[dict]], None]:
     def send(trace_id: str, events: list[dict]) -> None:
         req = urllib.request.Request(f"{base_url}/api/v1/traces", data=json.dumps({"trace_id": trace_id, "events": events}).encode(),
-                                     headers={"Content-Type": "application/json"}, method="POST")
+                                     headers={"Content-Type": "application/json", **({"Authorization": f"Bearer {api_key}"} if api_key else {})}, method="POST")
         urllib.request.urlopen(req, timeout=timeout).read()
     return send
 

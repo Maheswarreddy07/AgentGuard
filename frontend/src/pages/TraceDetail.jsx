@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { api, useApi, useMeta } from "../api";
+import { api, useApi, useAuth, useMeta } from "../api";
 import Flow, { Inspector } from "../components/Flow";
-import { Card, GOOD, Info, SEV, SevBadge, State, BAD } from "../ui";
+import { Card, GOOD, Info, SevBadge, State, BAD, sevColor } from "../ui";
 
 const OUT = { recovered: ["✅", "Recovered automatically", GOOD], escalated: ["⚠️", "Handed to a human", "#ff9f43"], stopped: ["⛔", "Run stopped", BAD], none: ["•", "No action taken", "#8b93a7"] };
 
 function Recovery({ id, reload }) {
+  const { can } = useAuth();
   const plan = useApi(`/api/v1/traces/${id}/recovery-plan`);
   const [sim, setSim] = useState({ transient_fail_count: 1, corrected_args_valid: true, evidence_available: true });
   const [res, setRes] = useState(null), [busy, setBusy] = useState(false), [err, setErr] = useState(null);
@@ -25,7 +26,7 @@ function Recovery({ id, reload }) {
           {p.action === "correct_args" && <label className="check"><input type="checkbox" checked={sim.corrected_args_valid} onChange={(e) => setSim({ ...sim, corrected_args_valid: e.target.checked })} />The corrected arguments turn out to be valid</label>}
           {p.action === "request_evidence" && <label className="check"><input type="checkbox" checked={sim.evidence_available} onChange={(e) => setSim({ ...sim, evidence_available: e.target.checked })} />The missing evidence is available</label>}
           {["escalate", "stop"].includes(p.action) && <p className="muted">This outcome never depends on the environment: a human decides.</p>}
-          <button className="btn primary" disabled={busy} onClick={run}>{busy ? "Simulating…" : "Run simulation"}</button>
+          <button className="btn primary" disabled={busy || !can("member")} title={can("member") ? "" : "Members and admins can run simulations"} onClick={run}>{busy ? "Simulating…" : "Run simulation"}</button>{!can("member") && <span className="muted small">Viewers can read the plan but not run simulations.</span>}
           {err && <p role="alert" className="alert">{err}</p>}
           {res && <div className="outcome" style={{ "--c": o[2] }} role="status"><span className="big">{o[0]}</span><div><b>{o[1]}</b><div className="muted">{res.outcome.attempts ? `${res.outcome.attempts} attempt(s). ` : ""}{res.note}</div></div></div>}
         </div>)}
@@ -34,11 +35,12 @@ function Recovery({ id, reload }) {
 }
 
 function AiCard({ id }) {
+  const { can } = useAuth();
   const [ai, setAi] = useState(null), [busy, setBusy] = useState(false);
   async function ask() { setBusy(true); try { setAi((await api(`/api/v1/traces/${id}/analyze`, { method: "POST" })).ai_diagnosis); } catch (e) { setAi({ status: "error", error: e.message }); } finally { setBusy(false); } }
   return (
     <Card title="AI second opinion (optional)" hint="A language model reads only the relevant redacted events and offers a hypothesis. It is never treated as proof and never triggers actions.">
-      <button className="btn" disabled={busy} onClick={ask}>{busy ? "Asking…" : "Ask the AI to explain"}</button>
+      <button className="btn" disabled={busy || !can("member")} onClick={ask}>{busy ? "Asking…" : "Ask the AI to explain"}</button>
       {ai && (ai.status === "ok" ? (
         <div className="ai"><span className="badge">AI hypothesis — not proven</span><p>{ai.diagnosis.summary}</p><p><b>Likely cause:</b> {ai.diagnosis.likely_explanation}</p>
           <p><b>Cited steps:</b> {ai.diagnosis.supporting_evidence_event_ids.join(", ")} · <b>Confidence:</b> {ai.diagnosis.confidence} · {ai.diagnosis.needs_human_review ? "Human review recommended" : "No review flagged"}</p><p className="muted">Limits: {ai.diagnosis.limitations}</p></div>
@@ -79,7 +81,7 @@ export default function TraceDetail({ id }) {
 
       <Card title={`Findings (${A.findings.length})`} hint="Each finding comes from an explicit rule, so it is a proven violation of that rule — not a guess.">
         {A.findings.length === 0 ? <p className="muted">✅ No rule found a problem in this run.</p> : A.findings.map((f, i) => (
-          <article className="finding" key={i} style={{ "--c": SEV[f.severity] }}>
+          <article className="finding" key={i} style={{ "--c": sevColor(f.severity) }}>
             <div className="row"><b>{f.label}</b><SevBadge sev={f.severity} /><span className="badge">{f.proof === "rule" ? "proven by rule" : "heuristic"}</span></div>
             <p>{f.explanation}</p>
             <p className="muted"><b>Why it matters:</b> {f.why}</p>

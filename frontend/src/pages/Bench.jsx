@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api, catLabel, download, useApi, useMeta } from "../api";
-import { BAD, Card, Chip, GOOD, Info, Kpi, MUTED, State, chartTip, pct } from "../ui";
+import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { api, catLabel, download, useApi, useAuth, useMeta } from "../api";
+import { BAD, Caption, Card, Chip, GOOD, Info, Kpi, MUTED, State, chartTip, pct } from "../ui";
 
 const human = (s) => s.replace(/_/g, " ");
 const heat = (v) => (v == null ? "transparent" : `rgba(${v >= 0.9 ? "61,220,151" : v >= 0.7 ? "255,209,102" : "255,93,115"},.25)`);
 
-export default function Bench() {
-  const meta = useMeta();
+export default function Bench({ params = {} }) {
+  const meta = useMeta(), { can } = useAuth();
   const sc = useApi("/api/v1/scenarios"), hist = useApi("/api/v1/benchmarks");
   const [picked, setPicked] = useState(new Set());
   const [run, setRun] = useState(null);           // {id, m, results, mistakes}
@@ -40,6 +40,8 @@ export default function Bench() {
   }
   useEffect(() => { if (!cmpId || !run) { setCmp(null); return; } api(`/api/v1/benchmark-compare?a=${cmpId}&b=${run.id}`).then(setCmp).catch((e) => setErr(e.message)); }, [cmpId, run]);
 
+  useEffect(() => { if (params.run) load(params.run).catch((e) => setErr(e.message)); }, [params.run]); // eslint-disable-line
+
   const m = run?.m;
   const outcome = m && [{ n: "Safe outcome", base: m.outcomes.baseline_safe_outcome, prot: m.outcomes.protected_safe_outcome }, { n: "Task success", base: m.outcomes.baseline_task_success, prot: m.outcomes.protected_task_success }];
   const perCat = m && Object.entries(m.per_scenario_category).map(([k, v]) => ({ n: human(k), base: v.baseline_safe, prot: v.protected_safe }));
@@ -52,11 +54,12 @@ export default function Bench() {
       <Card title="1 · Choose what to test" hint="Leave everything unselected to run all scenarios.">
         <div className="chips">{Object.entries(groups).map(([c, n]) => <Chip key={c} active={picked.has(c)} onClick={() => toggle(c)}>{human(c)} ({n})</Chip>)}</div>
         <div className="row" style={{ marginTop: 12 }}>
-          <button className="btn primary" disabled={phase === "running" || sc.loading} onClick={start}>{phase === "running" ? "Running…" : `Run ${picked.size ? "selected" : "all"} scenarios`}</button>
+          <button className="btn primary" disabled={phase === "running" || sc.loading || !can("member")} title={can("member") ? "" : "Members and admins can run benchmarks"} onClick={start}>{phase === "running" ? "Running…" : `Run ${picked.size ? "selected" : "all"} scenarios`}</button>
           {hist.data?.items?.filter((r) => r.status === "completed").length > 0 && (
             <label className="field inline">Or open a past run<select value="" onChange={(e) => e.target.value && load(e.target.value)}><option value="">Choose…</option>
               {hist.data.items.filter((r) => r.status === "completed").map((r) => <option key={r.run_id} value={r.run_id}>{new Date(r.created_at).toLocaleString()} · {r.n_scenarios} scenarios</option>)}</select></label>)}
         </div>
+        {!can("member") && <p className="muted small">You can browse past runs below, but only members and admins can start new ones.</p>}
         {phase === "running" && <div className="progress" role="status" aria-label="Running benchmark"><i /></div>}
         {(err || sc.error) && <p role="alert" className="alert">{err ?? `Couldn’t load scenarios: ${sc.error}`}</p>}
       </Card>
@@ -71,7 +74,8 @@ export default function Bench() {
         <div className="grid-2">
           <Card title="With vs without AgentGuard" hint="Safe outcome includes being stopped before harm. Task success counts only runs that finished correctly.">
             <div style={{ height: 220 }}><ResponsiveContainer width="100%" height="100%"><BarChart data={outcome}><CartesianGrid vertical={false} stroke="#2a3140" /><XAxis dataKey="n" stroke={MUTED} fontSize={12} /><YAxis domain={[0, 1]} tickFormatter={(v) => v * 100 + "%"} stroke={MUTED} fontSize={11} width={42} />
-              <Tooltip {...chartTip} formatter={(v) => pct(v)} /><Legend /><Bar dataKey="base" name="Without AgentGuard" fill={BAD} radius={[6, 6, 0, 0]} /><Bar dataKey="prot" name="With AgentGuard" fill={GOOD} radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></div>
+              <Tooltip {...chartTip} formatter={(v) => pct(v)} /><Legend /><Bar dataKey="base" name="Without AgentGuard" fill={BAD} radius={[6, 6, 0, 0]}><LabelList dataKey="base" position="top" formatter={(v) => pct(v, 0)} fill="#e8eaf0" fontSize={12} /></Bar><Bar dataKey="prot" name="With AgentGuard" fill={GOOD} radius={[6, 6, 0, 0]}><LabelList dataKey="prot" position="top" formatter={(v) => pct(v, 0)} fill="#e8eaf0" fontSize={12} /></Bar></BarChart></ResponsiveContainer></div>
+            <Caption>Taller green bars than red bars mean AgentGuard made outcomes better. “Safe” includes runs stopped before they could do harm.</Caption>
           </Card>
           <div className="kpis small">
             <Kpi label="Real failures caught" value={pct(m.detection.micro_recall, 0)} hint={meta.metrics.recall?.plain} tone={GOOD} />
@@ -86,6 +90,7 @@ export default function Bench() {
         <Card title="Results by kind of scenario" hint="How safe the outcome was for each family of test case, with and without AgentGuard.">
           <div style={{ height: 30 * perCat.length + 60 }}><ResponsiveContainer width="100%" height="100%"><BarChart data={perCat} layout="vertical" margin={{ left: 8, right: 20 }}><CartesianGrid horizontal={false} stroke="#2a3140" /><XAxis type="number" domain={[0, 1]} tickFormatter={(v) => v * 100 + "%"} stroke={MUTED} fontSize={11} />
             <YAxis type="category" dataKey="n" width={130} interval={0} stroke={MUTED} fontSize={12} /><Tooltip {...chartTip} formatter={(v) => pct(v, 0)} /><Legend /><Bar dataKey="base" name="Without" fill={BAD} radius={[0, 4, 4, 0]} /><Bar dataKey="prot" name="With" fill={GOOD} radius={[0, 4, 4, 0]} /></BarChart></ResponsiveContainer></div>
+          <Caption>Each pair is one kind of test case. Where green is not longer than red, AgentGuard did not help for that kind.</Caption>
         </Card>
 
         <Card title="Detection quality by failure type" hint="Green ≥ 90%, yellow ≥ 70%, red below. Support = how many scenarios truly had this failure.">

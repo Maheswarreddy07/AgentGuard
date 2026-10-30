@@ -5,6 +5,7 @@ from app.evaluation.metrics import compute
 from app.evaluation.scenario import Scenario
 from app.localization.locate import localize
 from app.recovery.policy import decide, execute
+from app.services.settings import Config, default_config
 from app.schemas.events import Event
 
 BASE = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -14,13 +15,14 @@ def build_events(sc: Scenario) -> list[Event]:
     return [Event.model_validate({"trace_id": sc.id, "run_id": sc.id, "agent_name": "support-agent",
             "timestamp": (BASE + timedelta(seconds=e["step_index"])).isoformat(), **e}) for e in sc.events]
 
-def run_scenario(sc: Scenario) -> dict:
+def run_scenario(sc: Scenario, cfg: Config | None = None) -> dict:
+    cfg = cfg or default_config()
     events = build_events(sc)  # detectors receive events only; labels/sim stay out of reach
     lat = []
     for _ in range(REPEATS):
-        t = time.perf_counter(); findings = run_all(events); loc = localize(events, findings); dec = decide(events, findings)
+        t = time.perf_counter(); findings = run_all(events, cfg.disabled_rules, cfg.retry_loop_threshold); loc = localize(events, findings); dec = decide(events, findings, cfg.max_retries)
         lat.append((time.perf_counter() - t) * 1000)
-    out = execute(dec, sc.sim.model_dump())
+    out = execute(dec, sc.sim.model_dump(), cfg.max_retries)
     clean = not sc.labels.failure_categories
     intervened = dec.action in ("escalate", "stop")
     protected_success = (not intervened and dec.action == "none") if clean else out.recovered
@@ -33,7 +35,8 @@ def run_scenario(sc: Scenario) -> dict:
 
 def statistics_mean(v): return sum(v) / len(v)
 
-def run_benchmark(scenarios: list[Scenario], seed: int = 0) -> dict:
-    results = [run_scenario(s) for s in scenarios]
+def run_benchmark(scenarios: list[Scenario], seed: int = 0, cfg: Config | None = None) -> dict:
+    cfg = cfg or default_config()
+    results = [run_scenario(s, cfg) for s in scenarios]
     return {"label": "SYNTHETIC simulated benchmark; baseline outcomes are by construction of the scenarios (a failure-labelled scenario is one where the unprotected run fails). Not a real-agent evaluation.",
-            "seed": seed, "metrics": compute(results, seed), "results": results}
+            "seed": seed, "config": {"max_retries": cfg.max_retries, "retry_loop_threshold": cfg.retry_loop_threshold, "disabled_rules": sorted(cfg.disabled_rules)}, "metrics": compute(results, seed), "results": results}

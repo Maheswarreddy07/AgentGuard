@@ -28,9 +28,19 @@ Prerequisites: Python 3.12+, Node 20+ and npm, git.
    npm run dev
    ```
    Open http://localhost:5173 (Vite proxies `/api` to port 8000).
-5. **Try the main flow in the UI** (no terminal needed): on Overview click **Load demo data** → click a red incident → follow the step-by-step story of the run → see *What is safe to do next* and run the simulation → open **Benchmark Lab** → *Run all scenarios* → read the verdict, charts and mistakes → export.
+5. **Create your admin account.** The first time you open the app it shows *Welcome to AgentGuard*. Enter your name, email and a password of at least 10 characters. That account is the administrator. (To skip this screen on a server, set `ADMIN_EMAIL` and `ADMIN_PASSWORD` before the first start. To turn sign-in off on your own laptop, set `AUTH_REQUIRED=0`.)
+6. **Explore** (no terminal needed): Overview → **Load demo data** → click a red incident → follow the run step by step → *What is safe to do next* → **Benchmark Lab** → *Run all scenarios* → **History** to see everything that happened and how results changed.
+7. **Invite people and connect an agent:** Settings → *Team* (add people with a role) and Settings → *Connect an agent* (create an API key, copy the ready-made code).
 
-> Upgrading from an earlier version? Your existing `agentguard.db` is upgraded automatically on startup (new summary columns are added and filled in). No need to delete it.
+> Upgrading from an earlier version? Your existing `agentguard.db` is upgraded automatically on startup. After upgrading, the first visit asks you to create the admin account.
+
+### Roles
+| Role | Can do |
+|---|---|
+| Viewer | Look at everything, change nothing |
+| Member | Also run benchmarks and simulations, load demo data, add scenarios, send traces |
+| Admin | Also manage people, API keys and settings; sees the security log |
+| API key (for agents) | Only send traces; cannot read anything |
 
 ### Run the benchmark from the command line
 ```bash
@@ -97,4 +107,4 @@ Sidebar pages: **Overview** (health donut, what is going wrong, severity, trend,
 10 deterministic detectors · localization (origin / first detectable / observed) · recovery policy + simulator · 135 scenarios (JSON or YAML) · benchmark API with background execution · SDK · React dashboard (Overview with trend chart, Traces, Benchmark Lab, Scenarios, Settings) · rate limiting · redaction · retention (at startup) · Alembic migration.
 
 ## Known limitations
-No authentication; rate limiting is in-memory per process (and per proxy IP behind a proxy); retention runs at startup only; no live recovery adapters; no browser (Playwright) E2E tests — the frontend is tested with mocked API calls and the full journey is tested at API level; Docker/Compose and deployment unverified; screenshots not included (see docs/portfolio.md); date-range filtering exists in the API but not in the UI; trace list filtering by category runs in memory (fine for thousands of traces, not millions).
+Authentication is built in (see Roles) but has no single sign-on, two-factor or email-based password reset (admins reset passwords); session tokens live in the browser’s local storage; rate limiting is in-memory per process (and per proxy IP behind a proxy); retention runs at startup only; no live recovery adapters; no browser (Playwright) E2E tests — the frontend is tested with mocked API calls and the full journey is tested at API level; Docker/Compose and deployment unverified; screenshots not included (see docs/portfolio.md); date-range filtering exists in the API but not in the UI; trace list filtering by category runs in memory (fine for thousands of traces, not millions).

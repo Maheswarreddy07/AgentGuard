@@ -29,7 +29,7 @@ export function Inspector({ event, findings = [] }) {
   return (
     <div className="inspector">
       <div className="row"><b>{eventName(event)}</b><span className="badge">step {event.step_index}</span><span className="badge">{event.event_type}</span>
-        <span className="badge sev" style={{ "--c": event.status === "error" ? "#ff5d73" : "#3ddc97" }}>{event.status}{event.error_type ? ` · ${event.error_type}` : ""}</span></div>
+        <span className="badge sev" style={{ "--c": event.status === "error" ? "var(--bad)" : "var(--good)" }}>{event.status}{event.error_type ? ` · ${event.error_type}` : ""}</span></div>
       {hit.map((f, i) => <p key={i} className="callout">⚠ Evidence for “{f.label}”: {f.explanation}</p>)}
       <div className="cols">
         {event.tool_input && <div><h4>Input</h4><pre>{JSON.stringify(event.tool_input, null, 1)}</pre></div>}

@@ -1,4 +1,8 @@
 # API (OpenAPI at /docs)
+Every endpoint except `/health` and `/api/v1/auth/status|setup|login` needs `Authorization: Bearer <session token or ag_ API key>` (unless the server runs with `AUTH_REQUIRED=0`). API keys may only call the two trace-ingest endpoints.
+
+New in this version: `/api/v1/auth/*` (status, setup, login, logout, me, change-password), `/api/v1/users` (admin), `/api/v1/api-keys` (admin), `PUT /api/v1/settings` + `POST /api/v1/settings/cleanup` (admin), `/api/v1/history/activity` and `/api/v1/history/benchmarks`, `GET /api/v1/scenarios/template`.
+
 | Method | Path | Notes |
 |---|---|---|
 | GET | /health | DB check |
