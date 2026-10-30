@@ -28,7 +28,9 @@ Prerequisites: Python 3.12+, Node 20+ and npm, git.
    npm run dev
    ```
    Open http://localhost:5173 (Vite proxies `/api` to port 8000).
-5. **Try the main flow in the UI:** Traces → open a trace → read the findings → *Run safe recovery simulation* → Benchmark Lab → *Run baseline vs protected* → export JSON/CSV.
+5. **Try the main flow in the UI** (no terminal needed): on Overview click **Load demo data** → click a red incident → follow the step-by-step story of the run → see *What is safe to do next* and run the simulation → open **Benchmark Lab** → *Run all scenarios* → read the verdict, charts and mistakes → export.
+
+> Upgrading from an earlier version? Your existing `agentguard.db` is upgraded automatically on startup (new summary columns are added and filled in). No need to delete it.
 
 ### Run the benchmark from the command line
 ```bash
@@ -84,12 +86,15 @@ Detection quality depends on what you declare (`arg_schema`, `required_tools`, `
 | Localization accuracy (n=96 labelled) | n/a | 97.9%, mean abs step error 0.01 |
 | Recovery success (attempted recoveries, n=30) | n/a | 66.7% |
 | Unnecessary intervention rate (clean scenarios) | n/a | 2.6% |
-| Added latency, mean ± std per scenario | n/a | 0.028 ± 0.014 ms |
+| Added latency, mean ± std per scenario | n/a | 0.052 ± 0.019 ms |
 | Cost per run | n/a | $0 (no paid model calls) |
 <!-- /RESULTS -->
+
+## The interface
+Sidebar pages: **Overview** (health donut, what is going wrong, severity, trend, urgent incidents, benchmark summary) · **Traces** (search, status/severity/problem-type/agent filters, sorting, pagination) · **Investigation** (clickable run timeline marking origin / first detectable / observed, findings with plain-English why and fix, safe-action preview + simulator, optional AI second opinion) · **Benchmark Lab** (pick scenarios, with-vs-without charts, per-type quality heat table, plain-language mistakes, compare runs, export) · **Scenarios** · **Settings** (status, limits, connect-your-agent, glossary). Hover the ⓘ icons for definitions.
 
 ## What exists
 10 deterministic detectors · localization (origin / first detectable / observed) · recovery policy + simulator · 135 scenarios (JSON or YAML) · benchmark API with background execution · SDK · React dashboard (Overview with trend chart, Traces, Benchmark Lab, Scenarios, Settings) · rate limiting · redaction · retention (at startup) · Alembic migration.
 
 ## Known limitations
-No authentication; rate limiting is in-memory per process (and per proxy IP behind a proxy); retention runs at startup only; no live recovery adapters; no browser (Playwright) E2E tests — the frontend is tested with mocked API calls and the full journey is tested at API level; Docker/Compose and deployment unverified; screenshots not included (see docs/portfolio.md); filtering by severity/category/date in the Trace Explorer is not implemented (agent filter only).
+No authentication; rate limiting is in-memory per process (and per proxy IP behind a proxy); retention runs at startup only; no live recovery adapters; no browser (Playwright) E2E tests — the frontend is tested with mocked API calls and the full journey is tested at API level; Docker/Compose and deployment unverified; screenshots not included (see docs/portfolio.md); date-range filtering exists in the API but not in the UI; trace list filtering by category runs in memory (fine for thousands of traces, not millions).

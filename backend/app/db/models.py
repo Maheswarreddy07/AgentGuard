@@ -12,6 +12,12 @@ class TraceRow(Base):
     trace_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     agent_name: Mapped[str] = mapped_column(String(128), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    n_events: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(16), default="clean", index=True)  # clean | flagged
+    max_severity: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    categories: Mapped[list] = mapped_column(JSON, default=list)
+    headline: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     events: Mapped[list["EventRow"]] = relationship(back_populates="trace", cascade="all, delete-orphan")
 
 class EventRow(Base):

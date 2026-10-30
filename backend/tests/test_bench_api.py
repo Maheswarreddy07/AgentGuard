@@ -9,7 +9,7 @@ def test_prf_and_empty():
     p, r, f = prf(3, 1, 1); assert (p, r) == (0.75, 0.75) and abs(f - 0.75) < 1e-9
 
 def R(true, pred, **kw):
-    base = dict(true=true, pred=pred, true_step=None, pred_step=None, action="none", expected_action="none", latency_ms=1.0,
+    base = dict(category="x", true=true, pred=pred, true_step=None, pred_step=None, action="none", expected_action="none", latency_ms=1.0,
                 outcome={"attempted": False, "recovered": False}, baseline_success=not true, baseline_safe=not true, protected_success=not true, protected_safe=not true)
     return {**base, **kw}
 

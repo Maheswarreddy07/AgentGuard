@@ -13,7 +13,7 @@ Reproduce: `cd backend && python -m app.evaluation.cli generate && python -m app
 | Localization accuracy (n=96 labelled) | n/a | 97.9%, mean abs step error 0.01 |
 | Recovery success (attempted recoveries, n=30) | n/a | 66.7% |
 | Unnecessary intervention rate (clean scenarios) | n/a | 2.6% |
-| Added latency, mean ± std per scenario | n/a | 0.028 ± 0.014 ms |
+| Added latency, mean ± std per scenario | n/a | 0.052 ± 0.019 ms |
 | Cost per run | n/a | $0 (no paid model calls) |
 
 ## Where AgentGuard is wrong (from the data)

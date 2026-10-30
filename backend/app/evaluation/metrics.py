@@ -58,5 +58,8 @@ def compute(results: list[dict], seed: int = 0) -> dict:
                      "action_agreement_with_expected": fm([int(r["action"] == r["expected_action"]) for r in results])},
         "unnecessary_intervention_rate": fm([int(r["action"] != "none") for r in clean]),
         "latency_ms": {"mean_added": fm([r["latency_ms"] for r in results]), "std": statistics.pstdev([r["latency_ms"] for r in results]) if results else None},
+        "per_scenario_category": {c: {"n": len(g), "baseline_success": fm([int(r["baseline_success"]) for r in g]), "protected_success": fm([int(r["protected_success"]) for r in g]),
+                                      "baseline_safe": fm([int(r["baseline_safe"]) for r in g]), "protected_safe": fm([int(r["protected_safe"]) for r in g])}
+                                  for c in sorted({r["category"] for r in results}) for g in [[r for r in results if r["category"] == c]]},
         "cost_usd_per_run": 0.0, "cost_note": "Deterministic engine only: no paid model calls were made.",
     }
