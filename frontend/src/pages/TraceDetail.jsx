@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api, useApi, useAuth, useMeta } from "../api";
 import Flow, { Inspector } from "../components/Flow";
-import { Card, GOOD, Info, SevBadge, State, BAD, sevColor } from "../ui";
+import { Card, GOOD, Info, Kpi, SevBadge, State, BAD, sevColor } from "../ui";
 
 const OUT = { recovered: ["✅", "Recovered automatically", GOOD], escalated: ["⚠️", "Handed to a human", "#ff9f43"], stopped: ["⛔", "Run stopped", BAD], none: ["•", "No action taken", "#8b93a7"] };
 
@@ -67,6 +67,15 @@ export default function TraceDetail({ id }) {
         <p className="lead">{A.summary.headline}</p>
       </Card>
 
+      <div className="kpis">
+        <Kpi label="Outcome" value={t.data.outcome} sub={t.data.mode ? `${t.data.mode} mode · ${t.data.environment ?? "no environment"}` : undefined} />
+        <Kpi label="Risk score" value={t.data.risk_score} sub="highest reached" tone={t.data.risk_score >= 50 ? BAD : undefined} />
+        <Kpi label="Actions blocked" value={t.data.blocked_actions} tone={t.data.blocked_actions ? BAD : undefined} />
+        <Kpi label="Tool calls" value={t.data.tool_calls} sub={t.data.duration_ms == null ? "still running" : `${(t.data.duration_ms / 1000).toFixed(1)} s`} />
+        <Kpi label="Tokens / cost" value={t.data.tokens} sub={`$${t.data.cost_usd.toFixed(4)}`} />
+      </div>
+      {t.data.task && <p className="muted">Task given to the agent: <b>{t.data.task}</b></p>}
+
       <Card title="What happened" hint="Each box is one step of the run, left to right. Red = error. Outlined = evidence for a finding. Click any step to inspect it.">
         <Flow events={events} markers={markers} evidence={evidence} selected={sel} onSelect={setSel} />
         {loc.resolved ? (
@@ -89,6 +98,13 @@ export default function TraceDetail({ id }) {
             <div className="chips"><span className="muted">Evidence:</span>{f.evidence_event_ids.map((eid) => <button key={eid} className="tag btnlike" onClick={() => setSel(eid)}>step {events.find((e) => e.event_id === eid)?.step_index ?? "?"}</button>)}</div>
           </article>))}
       </Card>
+
+      {events.some((e) => e.event_type === "policy_check") && <Card title="Policy decisions" sub="Each check happened BEFORE the tool was allowed to run">
+        <ul className="plain">{events.filter((e) => e.event_type === "policy_check").map((e) => <li key={e.event_id}><button className="linkbtn" onClick={() => setSel(e.event_id)}>step {e.step_index}</button> <b>{e.tool_name}</b>: <span className="badge sev" style={{ "--c": e.metadata.effective === "ALLOW" ? GOOD : BAD }}>{e.metadata.effective.replace(/_/g, " ")}</span>
+          {e.metadata.mode !== "enforce" && <span className="muted small"> ({e.metadata.mode} mode{e.metadata.decision !== e.metadata.effective ? `; enforce mode would have said ${e.metadata.decision.replace(/_/g, " ")}` : ""})</span>} <span className="muted">{e.metadata.reason}</span></li>)}</ul></Card>}
+      {events.some((e) => e.event_type === "risk_detected") && <Card title="Risk warnings" sub="Predicted before the action ran — separate from confirmed findings above">
+        {events.filter((e) => e.event_type === "risk_detected").map((e) => <article key={e.event_id} className="finding" style={{ "--c": sevColor(e.metadata.level) }}><div className="row"><b>Score {e.metadata.score}</b><SevBadge sev={e.metadata.level} /><span className="badge">predicted, not confirmed</span></div>
+          <ul className="plain small">{e.metadata.evidence.map((x, i) => <li key={i}>{x}</li>)}</ul></article>)}</Card>}
 
       <Recovery id={id} reload={reload} />
       <AiCard id={id} />

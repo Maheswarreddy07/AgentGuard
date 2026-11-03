@@ -13,6 +13,11 @@ class EventType(StrEnum):
     RECOVERY_ATTEMPT = "recovery_attempt"
     HUMAN_APPROVAL = "human_approval"
     RUN_END = "run_end"
+    LLM_RESPONSE = "llm_response"
+    POLICY_CHECK = "policy_check"
+    RISK_DETECTED = "risk_detected"
+    RECOVERY_COMPLETED = "recovery_completed"
+    AGENT_ERROR = "agent_error"
 
 class Status(StrEnum):
     OK = "ok"
@@ -33,5 +38,8 @@ class Event(BaseModel):
     tool_output: Any = None
     status: Status = Status.OK
     duration_ms: int | None = Field(default=None, ge=0)
+    tokens_in: int | None = Field(default=None, ge=0)
+    tokens_out: int | None = Field(default=None, ge=0)
+    cost_usd: float | None = Field(default=None, ge=0)
     error_type: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)

@@ -1,7 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 export const GOOD = "#3ddc97", BAD = "#ff5d73", WARN = "#ff9f43", MUTED = "#8b93a7", ACCENT = "#6ea8fe";
 export const SEV = {};   // filled from the backend's /meta by applyTheme — never hardcoded here
-export function applyTheme(meta) { for (const k of Object.keys(SEV)) delete SEV[k]; Object.assign(SEV, meta?.severity_colors ?? {}); }
+export function applyTheme(meta) {
+  for (const k of Object.keys(SEV)) delete SEV[k];
+  Object.assign(SEV, meta?.severity_colors ?? {});
+  if (typeof document !== "undefined") for (const [k, v] of Object.entries(SEV)) document.documentElement.style.setProperty("--sev-" + k, v);
+}
 export const sevColor = (s) => SEV[s] ?? MUTED;
 export const pct = (v, d = 1) => (v == null ? "n/a" : (v * 100).toFixed(d) + "%");
 export function timeAgo(iso) {

@@ -1,0 +1,2 @@
+# Roadmap
+See IMPLEMENTATION_STATUS.md "Next steps". In order: recovery engine with verification → demo agents and mock tools → trace-to-scenario regression and replay → three-mode benchmark on real sample-agent runs → competitive analysis and differentiation write-up → Integrations / trend UI gaps → Docker, Postgres, CI and deployment verification → LangChain/LangGraph adapters → optional learned risk model once enough labelled real data exists.

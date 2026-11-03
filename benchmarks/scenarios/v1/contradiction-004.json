@@ -90,7 +90,8 @@
    "contradictory_tool_results"
   ],
   "earliest_detectable_step": 4,
-  "expected_action": "request_evidence"
+  "expected_action": "request_evidence",
+  "category_steps": {}
  },
  "sim": {
   "transient_fail_count": 0,

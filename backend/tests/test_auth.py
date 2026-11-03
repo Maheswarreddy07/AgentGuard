@@ -117,7 +117,7 @@ def test_history_records_activity_and_hides_security_from_non_admins(c):
 def test_settings_validation_effects_and_reset(c):
     admin = setup_admin(c); c.post("/api/v1/demo/seed", headers=H(admin))
     s = c.get("/api/v1/settings", headers=H(admin)).json()
-    assert {f["key"] for f in s["fields"]} >= {"max_retries", "retention_days"} and all(f["help"] and f["default"] is not None for f in s["fields"]) and len(s["rules"]) == 10
+    assert {f["key"] for f in s["fields"]} >= {"max_retries", "retention_days"} and all(f["help"] and f["default"] is not None for f in s["fields"]) and len(s["rules"]) == 15
     assert "YOUR_API_KEY" in s["system"]["connect"]["snippet"] and s["system"]["connect"]["base_url"].startswith("http")
     for bad in ({"max_retries": 0}, {"max_retries": "3"}, {"nope": 1}, {"retention_days": 99999}):
         assert c.put("/api/v1/settings", headers=H(admin), json={"values": bad}).status_code == 422

@@ -1,0 +1,52 @@
+{
+ "id": "resource-002",
+ "category": "resource",
+ "description": "[SYNTHETIC] Over its tool-call, token or cost budget.",
+ "task": "Resolve a customer support request.",
+ "events": [
+  {
+   "event_id": "e0",
+   "step_index": 0,
+   "event_type": "run_start",
+   "metadata": {
+    "required_tools": [],
+    "budget": {
+     "max_cost_usd": 0.05
+    }
+   }
+  },
+  {
+   "event_id": "e1",
+   "step_index": 1,
+   "event_type": "model_request",
+   "cost_usd": 0.03
+  },
+  {
+   "event_id": "e2",
+   "step_index": 2,
+   "event_type": "model_request",
+   "cost_usd": 0.04
+  },
+  {
+   "event_id": "e3",
+   "step_index": 3,
+   "event_type": "run_end",
+   "metadata": {
+    "claimed_success": true
+   }
+  }
+ ],
+ "labels": {
+  "failure_categories": [
+   "resource_exhaustion"
+  ],
+  "earliest_detectable_step": 2,
+  "expected_action": "stop",
+  "category_steps": {}
+ },
+ "sim": {
+  "transient_fail_count": 0,
+  "corrected_args_valid": true,
+  "evidence_available": true
+ }
+}

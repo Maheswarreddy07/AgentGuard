@@ -56,8 +56,8 @@ def test_rate_limit():
 def test_retention_purges_old_only():
     f = make_session_factory(make_engine("sqlite:///:memory:"))
     with f() as s:
-        s.add(TraceRow(trace_id="old", agent_name="a", created_at=datetime.now(timezone.utc) - timedelta(days=40)))
-        s.add(TraceRow(trace_id="new", agent_name="a")); s.commit()
+        s.add(TraceRow(workspace_id=1, trace_id="old", agent_name="a", created_at=datetime.now(timezone.utc) - timedelta(days=40)))
+        s.add(TraceRow(workspace_id=1, trace_id="new", agent_name="a")); s.commit()
         assert purge_older_than(s, 30) == 1 and purge_older_than(s, 0) == 0
         assert [t.trace_id for t in s.query(TraceRow)] == ["new"]
 

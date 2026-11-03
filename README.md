@@ -10,7 +10,7 @@ Prerequisites: Python 3.12+, Node 20+ and npm, git.
    ```bash
    cd backend
    python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
-   pip install -e ".[dev]"
+   python -m pip install -e ".[dev]" -e ../sdk
    ```
 2. **Load synthetic demo traces** (optional but recommended)
    ```bash
@@ -40,7 +40,7 @@ Prerequisites: Python 3.12+, Node 20+ and npm, git.
 | Viewer | Look at everything, change nothing |
 | Member | Also run benchmarks and simulations, load demo data, add scenarios, send traces |
 | Admin | Also manage people, API keys and settings; sees the security log |
-| API key (for agents) | Only send traces; cannot read anything |
+| API key (for agents) | Send traces, ask for a runtime decision before a tool runs, poll an approval; cannot read or change anything else |
 
 ### Run the benchmark from the command line
 ```bash
@@ -71,40 +71,40 @@ Copy `.env.example` to `.env` and set `LLM_PROVIDER=anthropic`, `LLM_API_KEY`, `
 ### Production database
 Set `DATABASE_URL` to PostgreSQL, `AUTO_CREATE_TABLES=0`, then `cd backend && alembic upgrade head`.
 
-## Instrument your own agent
+## Protect your own agent (SDK)
 ```python
-from agentguard_sdk import Tracer, http_transport
-tracer = Tracer("my-agent", http_transport("http://localhost:8000"))
-with tracer.run(required_tools=["lookup_order"]) as run:
-    run.call("lookup_order", {"order_id": 1}, fn=lookup_order, read_only=True,
-             arg_schema={"required": ["order_id"], "types": {"order_id": "integer"}})
-    run.approval("issue_refund", approved=True)
-    run.call("issue_refund", {"amount": 20}, fn=issue_refund, consequential=True)
+from agentguard import AgentGuard, ToolCallBlocked
+guard = AgentGuard(api_url="http://localhost:8000", api_key="ag_...", mode="enforce")   # key from Settings → Connect an agent
+
+@guard.tool("issue_refund", consequential=True)
+def issue_refund(order_id, amount): ...
+
+with guard.trace(agent_name="support-agent", task="Refund ORD-1") as run:
+    run.tools.issue_refund(order_id="ORD-1", amount=20)   # checked BEFORE it runs; may raise ToolCallBlocked or wait for a human
     run.finish(claimed_success=True)
 ```
-Detection quality depends on what you declare (`arg_schema`, `required_tools`, `consequential`, `must_precede`, `constraints`). Undeclared problems are not detected.
+Create rules in **Policy Center** (start from a template), watch warnings in **Risk Monitor**, decide on held actions in **Approvals**. Details: [docs/SDK_GUIDE.md](docs/SDK_GUIDE.md).
 
 ## Results (synthetic, simulated — read [docs/evaluation.md](docs/evaluation.md) first)
 <!-- RESULTS -->
 | Metric (denominator) | Baseline | Protected |
 |---|---|---|
-| Task success (all 135 scenarios) | 28.9% | 42.2% (Δ 95% CI 7.4 to 20.0 pts) |
-| Safe outcome (all scenarios) | 28.9% | 93.3% (Δ 95% CI 56.3 to 72.6 pts) |
-| Detection micro P / R / F1 | n/a | 99.3% / 98.5% / 98.9% |
-| Macro-F1 (categories with support) | n/a | 98.8% |
-| False-positive rate (clean scenarios, n=39) | n/a | 2.6% |
-| Localization accuracy (n=96 labelled) | n/a | 97.9%, mean abs step error 0.01 |
-| Recovery success (attempted recoveries, n=30) | n/a | 66.7% |
-| Unnecessary intervention rate (clean scenarios) | n/a | 2.6% |
-| Added latency, mean ± std per scenario | n/a | 0.052 ± 0.019 ms |
+| Task success (all 189 scenarios) | 26.5% | 35.4% (Δ 95% CI 4.8 to 13.2 pts) |
+| Safe outcome (all scenarios) | 26.5% | 95.2% (Δ 95% CI 61.9 to 75.7 pts) |
+| Detection micro P / R / F1 | n/a | 99.5% / 98.9% / 99.2% |
+| Macro-F1 (categories with support) | n/a | 99.2% |
+| False-positive rate (clean scenarios, n=50) | n/a | 2.0% |
+| Localization accuracy (n=139 labelled) | n/a | 98.6%, mean abs step error 0.01 |
+| Recovery success (attempted recoveries, n=29) | n/a | 65.5% |
+| Unnecessary intervention rate (clean scenarios) | n/a | 2.0% |
+| Early-warning precision (n=76 warnings) | n/a | 88.2% |
+| Early-warning recall (n=152 predictable failures) | n/a | 44.1% |
+| Added latency, mean ± std per scenario | n/a | 0.058 ± 0.038 ms |
 | Cost per run | n/a | $0 (no paid model calls) |
 <!-- /RESULTS -->
 
 ## The interface
 Sidebar pages: **Overview** (health donut, what is going wrong, severity, trend, urgent incidents, benchmark summary) · **Traces** (search, status/severity/problem-type/agent filters, sorting, pagination) · **Investigation** (clickable run timeline marking origin / first detectable / observed, findings with plain-English why and fix, safe-action preview + simulator, optional AI second opinion) · **Benchmark Lab** (pick scenarios, with-vs-without charts, per-type quality heat table, plain-language mistakes, compare runs, export) · **Scenarios** · **Settings** (status, limits, connect-your-agent, glossary). Hover the ⓘ icons for definitions.
 
-## What exists
-10 deterministic detectors · localization (origin / first detectable / observed) · recovery policy + simulator · 135 scenarios (JSON or YAML) · benchmark API with background execution · SDK · React dashboard (Overview with trend chart, Traces, Benchmark Lab, Scenarios, Settings) · rate limiting · redaction · retention (at startup) · Alembic migration.
-
-## Known limitations
-Authentication is built in (see Roles) but has no single sign-on, two-factor or email-based password reset (admins reset passwords); session tokens live in the browser’s local storage; rate limiting is in-memory per process (and per proxy IP behind a proxy); retention runs at startup only; no live recovery adapters; no browser (Playwright) E2E tests — the frontend is tested with mocked API calls and the full journey is tested at API level; Docker/Compose and deployment unverified; screenshots not included (see docs/portfolio.md); date-range filtering exists in the API but not in the UI; trace list filtering by category runs in memory (fine for thousands of traces, not millions).
+## What exists vs what is planned
+Built and tested: workspaces with isolation, auth/roles/API keys, ingestion with redaction, 15 detectors, risk prediction with tracked outcomes, policy engine (versioned, testable, simulatable), approvals, SDK with pre-execution enforcement, 189-scenario synthetic benchmark with splits, React dashboard. **Not built yet:** verified recovery engine, sample agents + demo launcher, trace → regression scenario + replay, three-mode benchmark on real runs, competitive analysis. See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for the full, honest matrix and [docs/LIMITATIONS.md](docs/LIMITATIONS.md).

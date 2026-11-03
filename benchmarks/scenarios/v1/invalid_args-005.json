@@ -53,7 +53,8 @@
    "tool_execution_failure"
   ],
   "earliest_detectable_step": 1,
-  "expected_action": "correct_args"
+  "expected_action": "correct_args",
+  "category_steps": {}
  },
  "sim": {
   "transient_fail_count": 0,

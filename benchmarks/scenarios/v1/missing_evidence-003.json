@@ -61,7 +61,8 @@
    "missing_required_evidence"
   ],
   "earliest_detectable_step": 3,
-  "expected_action": "request_evidence"
+  "expected_action": "request_evidence",
+  "category_steps": {}
  },
  "sim": {
   "transient_fail_count": 0,

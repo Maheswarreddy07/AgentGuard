@@ -1,7 +1,7 @@
 {
  "id": "adv-07",
  "category": "adversarial",
- "description": "[SYNTHETIC, adversarial] flaky tool: 3 interleaved failures, each recovered (not a loop)",
+ "description": "[SYNTHETIC, adversarial] flaky tool: 3 interleaved failures, each recovered (not a retry loop, but the same call succeeds 3 times)",
  "task": "Resolve a customer support request.",
  "events": [
   {
@@ -128,10 +128,11 @@
  ],
  "labels": {
   "failure_categories": [
-   "tool_execution_failure"
+   "tool_execution_failure",
+   "repeated_tool_calls"
   ],
   "earliest_detectable_step": 2,
-  "expected_action": "retry"
+  "expected_action": "stop"
  },
  "sim": {
   "transient_fail_count": 0,

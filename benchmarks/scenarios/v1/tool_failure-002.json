@@ -46,7 +46,8 @@
    "tool_execution_failure"
   ],
   "earliest_detectable_step": 2,
-  "expected_action": "retry"
+  "expected_action": "retry",
+  "category_steps": {}
  },
  "sim": {
   "transient_fail_count": 2,

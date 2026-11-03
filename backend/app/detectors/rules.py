@@ -25,7 +25,7 @@ def retry_loop(events: list[Event], threshold: int = 3) -> list[Finding]:
         streak[e.tool_name] = (e.error_type, ids)
         if len(ids) >= threshold:
             hits[(e.tool_name, e.error_type)] = ids
-    return [Finding(category=Category.RETRY_LOOP, severity=Severity.HIGH, evidence_event_ids=ids,
+    return [Finding(category=Category.RETRY_LOOP, severity=Severity.HIGH, evidence_event_ids=ids, detectable_event_id=ids[threshold - 1],
             explanation=f"Tool '{k[0]}' failed {len(ids)} times in a row with the same error.", recommended_action="stop_and_escalate")
             for k, ids in hits.items()]
 
@@ -147,15 +147,145 @@ def unsupported_success(events: list[Event]) -> list[Finding]:
             explanation="Run claimed success but a tool's latest result is an unresolved error.",
             recommended_action="mark_failed_and_escalate")] if bad else []
 
-ALL_RULES = [invalid_args, tool_failure, retry_loop, contradiction, missing_evidence, workflow_invariant,
-             goal_constraint, unsupported_success, unauthorized_action, incomplete]
+# ---------------------------------------------------------------------------------------------
+# Behaviour detectors
+# ---------------------------------------------------------------------------------------------
+import difflib, json as _json
 
-def run_all(events: list[Event], disabled=frozenset(), retry_loop_threshold: int = 3) -> list[Finding]:
-    """Run every enabled rule. `disabled` holds rule function names; the retry-loop threshold is adjustable."""
+def _canon(args) -> str:
+    return _json.dumps(args or {}, sort_keys=True, default=str)
+
+def _sig(e: Event) -> tuple[str, str]:
+    return (e.tool_name or "", _canon(e.tool_input))
+
+def _result_for(events: list[Event], call: Event) -> Event | None:
+    for e in events:
+        if e.event_type == EventType.TOOL_RESULT and e.tool_name == call.tool_name and e.step_index > call.step_index:
+            return e
+        if e.event_type == EventType.TOOL_CALL and e.tool_name == call.tool_name and e.step_index > call.step_index:
+            return None
+    return None
+
+def _near(a: dict | None, b: dict | None) -> bool:
+    """Near-identical = same keys, and every differing value is long free text (>=20 chars) that is >=90% similar.
+    A differing number or short string (an id, an amount) means a DIFFERENT request, never a near-duplicate."""
+    a, b = a or {}, b or {}
+    if set(a) != set(b): return False
+    for k in a:
+        if a[k] == b[k]: continue
+        if not (isinstance(a[k], str) and isinstance(b[k], str) and len(a[k]) >= 20 and len(b[k]) >= 20): return False
+        if difflib.SequenceMatcher(None, a[k], b[k]).ratio() < 0.9: return False
+    return True
+
+def repeated_calls(events: list[Event], threshold: int = 3) -> list[Finding]:
+    """The same call (or a near-identical one, >=90% similar arguments) succeeded `threshold`+ times:
+    the agent keeps re-asking for something it already has. Retries after errors are NOT counted here (see retry_loop)."""
+    clusters: list[dict] = []
+    for c in (e for e in events if e.event_type == EventType.TOOL_CALL):
+        key = _canon(c.tool_input)
+        cl = next((k for k in clusters if k["tool"] == c.tool_name and (k["key"] == key or _near(k["args"], c.tool_input))), None)
+        if cl is None:
+            cl = {"tool": c.tool_name, "key": key, "args": c.tool_input, "calls": [], "ok": [], "exact": True}; clusters.append(cl)
+        if key != cl["key"]: cl["exact"] = False
+        cl["calls"].append(c)
+        r = _result_for(events, c)
+        if r is not None and r.status == Status.OK: cl["ok"].append(c)
+    out = []
+    for cl in clusters:
+        if len(cl["ok"]) >= threshold:
+            det = cl["ok"][threshold - 1]
+            out.append(Finding(category=Category.REPEATED_CALLS, severity=Severity.MEDIUM, evidence_event_ids=[c.event_id for c in cl["calls"]], detectable_event_id=det.event_id,
+                explanation=f"'{cl['tool']}' was called {len(cl['ok'])} times with {'identical' if cl['exact'] else 'near-identical'} arguments and succeeded each time; the agent is re-asking for what it already has.",
+                deterministic=cl["exact"], confidence=1.0 if cl["exact"] else 0.7, evidence=[f"{len(cl['calls'])} calls, {len(cl['ok'])} successful, arguments {'identical' if cl['exact'] else '>=90% similar'}"],
+                recommended_action="stop_and_replan"))
+    return out
+
+def loop_detected(events: list[Event], cycles: int = 3) -> list[Finding]:
+    """(a) a block of 2-3 distinct calls repeated `cycles` times in a row; (b) 4+ consecutive successful results that are identical although the calls differ (searching without learning anything)."""
+    calls = [e for e in events if e.event_type == EventType.TOOL_CALL]; sigs = [_sig(c) for c in calls]; out = []
+    for p in (2, 3):
+        for i in range(0, len(sigs) - p * cycles + 1):
+            block = sigs[i:i + p]
+            if len(set(block)) == p and all(sigs[i + k] == block[k % p] for k in range(p * cycles)):
+                span = calls[i:i + p * cycles]
+                out.append(Finding(category=Category.LOOP, severity=Severity.HIGH, evidence_event_ids=[c.event_id for c in span], detectable_event_id=span[-1].event_id,
+                    explanation=f"The same {p}-step sequence ({' → '.join(b[0] for b in block)}) repeated {cycles} times in a row. The agent is going in circles.",
+                    confidence=1.0, evidence=[f"{p}-call cycle × {cycles}"], recommended_action="stop_and_replan"))
+                break
+        if out: break
+    res = [e for e in events if e.event_type == EventType.TOOL_RESULT and e.status == Status.OK and e.tool_output not in (None, {}, [], "")]
+    run: list[Event] = []
+    for e in res:
+        if run and _canon(e.tool_output) == _canon(run[-1].tool_output): run.append(e)
+        else: run = [e]
+        if len(run) >= 4:
+            callsigs = {_sig(c) for c in calls if any(c.tool_name == r.tool_name for r in run) and run[0].step_index - 2 <= c.step_index <= e.step_index}
+            if len(callsigs) > 1 and not out:
+                out.append(Finding(category=Category.LOOP, severity=Severity.MEDIUM, evidence_event_ids=[r.event_id for r in run], detectable_event_id=run[3].event_id,
+                    explanation="Four results in a row were identical even though the requests differed: the agent is making no progress.", deterministic=False, confidence=0.7,
+                    evidence=["4 identical successful outputs for different requests"], recommended_action="stop_and_replan"))
+            break
+    return out
+
+_BUDGET_LABEL = {"max_tool_calls": "tool calls", "max_steps": "steps", "max_tokens": "tokens", "max_cost_usd": "cost (USD)", "max_duration_ms": "run time (ms)"}
+
+def resource_exhaustion(events: list[Event], _=None) -> list[Finding]:
+    """RUN_START.metadata['budget'] = {max_tool_calls, max_steps, max_tokens, max_cost_usd, max_duration_ms}. Reports the first event that exceeds each limit."""
+    s = _start(events); budget = (s.metadata.get("budget") if s else None) or {}
+    if not budget: return []
+    calls = tokens = 0; cost = 0.0; found: dict[str, Event] = {}; vals: dict[str, float] = {}
+    for n, e in enumerate(events, 1):
+        calls += e.event_type == EventType.TOOL_CALL; tokens += (e.tokens_in or 0) + (e.tokens_out or 0); cost += e.cost_usd or 0.0
+        cur = {"max_tool_calls": calls, "max_steps": n, "max_tokens": tokens, "max_cost_usd": cost, "max_duration_ms": (e.timestamp - s.timestamp).total_seconds() * 1000}
+        for k, lim in budget.items():
+            if k in cur and isinstance(lim, (int, float)) and cur[k] > lim and k not in found: found[k] = e; vals[k] = cur[k]
+    return [Finding(category=Category.RESOURCE, severity=Severity.HIGH, evidence_event_ids=[e.event_id], detectable_event_id=e.event_id, confidence=1.0,
+            explanation=f"The run used {vals[k]:.4g} {_BUDGET_LABEL[k]}, over its limit of {budget[k]}.", evidence=[f"{k} = {budget[k]}"], recommended_action="stop_and_escalate") for k, e in found.items()]
+
+def sensitive_exposure(events: list[Event], _=None) -> list[Finding]:
+    """Sensitive data (found by the ingestion scanner) leaving through an external tool call or appearing in the final response. Seeing it in a tool RESULT is normal and not flagged."""
+    out = []
+    for e in events:
+        types = e.metadata.get("sensitive_types")
+        if not types: continue
+        if e.event_type == EventType.TOOL_CALL and e.metadata.get("external"):
+            where = f"sent to external tool '{e.tool_name}'"
+        elif e.event_type == EventType.RUN_END:
+            where = "included in the final response"
+        else: continue
+        out.append(Finding(category=Category.SENSITIVE, severity=Severity.HIGH, evidence_event_ids=[e.event_id], confidence=1.0,
+            explanation=f"Sensitive data ({', '.join(types)}) was {where}.", evidence=[f"detected types: {', '.join(types)}"], recommended_action="block_and_request_approval"))
+    return out
+
+def injection_indicators(events: list[Event], _=None) -> list[Finding]:
+    """Untrusted content (a tool result) contains instruction-like text. HIGH when the very next call uses a tool named in that text (the agent may have obeyed it)."""
+    out = []; ordered = sorted(events, key=lambda e: e.step_index)
+    for i, e in enumerate(ordered):
+        ind = e.metadata.get("injection_indicators")
+        if e.event_type != EventType.TOOL_RESULT or not ind: continue
+        nxt = next((c for c in ordered[i + 1:] if c.event_type == EventType.TOOL_CALL), None)
+        text = _canon(e.tool_output).lower()
+        obeyed = bool(nxt and nxt.tool_name and nxt.tool_name.lower() in text)
+        out.append(Finding(category=Category.INJECTION, severity=Severity.HIGH if obeyed else Severity.MEDIUM, deterministic=False, confidence=0.8 if obeyed else 0.6,
+            evidence_event_ids=[e.event_id] + ([nxt.event_id] if obeyed else []), detectable_event_id=e.event_id,
+            explanation=f"A tool result contains instruction-like text ({', '.join(ind)})." + (f" The next call uses '{nxt.tool_name}', which the text mentions: the agent may have followed it." if obeyed else " Treat it as untrusted data."),
+            evidence=[f"patterns: {', '.join(ind)}"], recommended_action="treat_as_untrusted_and_review"))
+    return out
+
+ALL_RULES = [invalid_args, tool_failure, retry_loop, repeated_calls, loop_detected, contradiction, missing_evidence, workflow_invariant, goal_constraint,
+             unsupported_success, unauthorized_action, resource_exhaustion, sensitive_exposure, injection_indicators, incomplete]
+_PARAM = {retry_loop: "retry_loop_threshold", repeated_calls: "duplicate_call_threshold"}
+
+def run_all(events: list[Event], disabled=frozenset(), retry_loop_threshold: int = 3, duplicate_call_threshold: int = 3) -> list[Finding]:
+    """Run every enabled rule. `disabled` holds rule function names; thresholds are adjustable. Each finding is stamped with its rule name."""
     ordered = sorted(events, key=lambda e: e.step_index)
+    params = {retry_loop: retry_loop_threshold, repeated_calls: duplicate_call_threshold}
     out: list[Finding] = []
     for rule in ALL_RULES:
-        if rule.__name__ in disabled:
-            continue
-        out += rule(ordered, retry_loop_threshold) if rule is retry_loop else rule(ordered)
+        if rule.__name__ in disabled: continue
+        for f in (rule(ordered, params[rule]) if rule in params else rule(ordered)):
+            f.rule = f.rule or rule.__name__
+            if f.confidence is None: f.confidence = 1.0 if f.deterministic else 0.6
+            if not f.evidence: f.evidence = [f"events: {', '.join(f.evidence_event_ids)}"]
+            out.append(f)
     return out

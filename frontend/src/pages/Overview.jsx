@@ -56,6 +56,18 @@ export default function Overview() {
         </div>
       </div>
 
+      <Card title="Operations" sub="What AgentGuard has been doing for your agents">
+        <div className="kpis">
+          <Kpi label="Waiting for approval" value={live.pending_approvals} tone={live.pending_approvals ? sevColor("high") : undefined} onClick={() => go("/approvals")} hint="Actions an agent is not allowed to take without a person saying yes." />
+          <Kpi label="Actions blocked" value={live.blocked_actions} sub={`${live.blocked_runs} run${live.blocked_runs === 1 ? "" : "s"} stopped`} onClick={() => go("/policies")} hint="Tool calls a policy stopped before they ran." />
+          <Kpi label="Runs at risk" value={live.risky_runs} sub={`average risk ${live.avg_risk == null ? "n/a" : live.avg_risk.toFixed(0)}`} tone={live.risky_runs ? sevColor("medium") : undefined} onClick={() => go("/risk")} hint="Runs whose risk score reached the warning level." />
+          <Kpi label="Succeeded / failed" value={`${live.successful_runs} / ${live.failed_runs}`} sub={`${live.running_runs} still running`} />
+          <Kpi label="Recoveries tried" value={live.recovery_attempts} />
+          <Kpi label="Average run time" value={live.avg_duration_ms == null ? "n/a" : (live.avg_duration_ms / 1000).toFixed(1) + " s"} />
+          <Kpi label="Estimated cost" value={"$" + live.total_cost_usd.toFixed(2)} sub="from model usage that agents reported" />
+        </div>
+      </Card>
+
       <Card title="What is going wrong" sub="Number of runs affected by each kind of problem" right={<div className="sev-legend">{[...meta.severities].reverse().map((s) => <span key={s}><i style={{ background: sevColor(s) }} />{s}</span>)}</div>}>
         <div style={{ height: 40 * cats.length + 30 }}>
           <ResponsiveContainer width="100%" height="100%">

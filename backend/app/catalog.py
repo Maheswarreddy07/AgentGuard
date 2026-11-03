@@ -11,8 +11,15 @@ CATEGORIES = {
  "workflow_invariant_violation": {"label": "Steps out of order", "why": "A step that must come after another (e.g. refund after identity check) happened first.", "fix": "Stop and escalate; the required order was not followed."},
  "goal_constraint_violation": {"label": "Task limit exceeded", "why": "A tool input went beyond a limit set for this task (for example a refund above the allowed amount).", "fix": "Block and request human approval."},
 }
-SEVERITIES = ["low", "medium", "high", "critical"]
-SEVERITY_COLORS = {"critical": "#ff5d73", "high": "#ff9f43", "medium": "#ffd166", "low": "#7aa2f7"}
+CATEGORIES.update({
+ "repeated_tool_calls": {"label": "Repeated calls", "why": "The agent keeps making the same successful call again and again, wasting time and money and hiding that it is stuck.", "fix": "Stop and replan; reuse the earlier result."},
+ "infinite_loop": {"label": "Going in circles", "why": "The agent repeats the same sequence of steps, or keeps getting identical answers, without making progress.", "fix": "Stop the run and replan with different information."},
+ "resource_exhaustion": {"label": "Budget exceeded", "why": "The run used more tool calls, tokens, cost or time than its limit allows.", "fix": "Stop the run and review why it needed so much."},
+ "sensitive_data_exposure": {"label": "Sensitive data exposed", "why": "Personal or secret data was sent to an external tool or included in the agent's final answer.", "fix": "Block the action and require approval; remove the data."},
+ "prompt_injection_indicator": {"label": "Possible prompt injection", "why": "Content the agent received from a tool contains instruction-like text that could try to take control of the agent.", "fix": "Treat the content as untrusted data and review the next actions."},
+})
+SEVERITIES = ["info", "low", "medium", "high", "critical"]
+SEVERITY_COLORS = {"info": "#8b93a7", "critical": "#ff5d73", "high": "#ff9f43", "medium": "#ffd166", "low": "#7aa2f7"}
 SEV_RANK = {s: i + 1 for i, s in enumerate(SEVERITIES)}
 ACTIONS = {
  "none": {"icon": "✓", "label": "No action needed", "plain": "Nothing actionable was found, so AgentGuard leaves the run alone."},
@@ -36,6 +43,11 @@ METRICS = {
  "latency": {"label": "Added latency", "plain": "Extra time AgentGuard's analysis adds per run."},
 }
 RULES = {
+ "repeated_calls": {"label": "Repeated calls", "description": "Flags the same (or near-identical) call succeeding several times.", "needs": "nothing extra (threshold is adjustable)"},
+ "loop_detected": {"label": "Loops & no progress", "description": "Flags repeating step sequences and runs that keep getting identical answers.", "needs": "nothing extra"},
+ "resource_exhaustion": {"label": "Budgets", "description": "Flags runs that exceed their tool-call, step, token, cost or time limits.", "needs": "a budget on the run"},
+ "sensitive_exposure": {"label": "Sensitive data", "description": "Flags personal or secret data sent to external tools or shown in the final answer.", "needs": "external marked on outbound tools"},
+ "injection_indicators": {"label": "Prompt-injection signs", "description": "Flags instruction-like text inside tool results (untrusted content).", "needs": "nothing extra"},
  "invalid_args": {"label": "Invalid tool arguments", "description": "Checks every tool call's inputs against the argument schema you declared.", "needs": "an arg_schema on the call"},
  "tool_failure": {"label": "Tool failures", "description": "Flags any tool result that came back as an error.", "needs": "nothing extra"},
  "retry_loop": {"label": "Retry loops", "description": "Flags the same tool failing the same way several times in a row.", "needs": "nothing extra (threshold is adjustable)"},
@@ -50,13 +62,16 @@ RULES = {
 ACTIVITY = {
  "setup_completed": "First admin account created", "login": "Signed in", "login_failed": "Failed sign-in", "logout": "Signed out", "password_changed": "Password changed",
  "user_created": "User created", "user_updated": "User updated", "password_reset": "Password reset by admin", "api_key_created": "API key created", "api_key_revoked": "API key revoked",
- "settings_updated": "Settings changed", "retention_run": "Old data cleaned up", "benchmark_started": "Benchmark run", "recovery_simulated": "Recovery simulated",
+ "settings_updated": "Settings changed", "policy_created": "Policy created", "policy_updated": "Policy updated", "policy_toggled": "Policy switched on/off", "approval_decided": "Approval decision", "workspace_created": "Workspace created", "api_key_rotated": "API key rotated", "recovery_proposed": "Recovery proposed", "recovery_reported": "Recovery result recorded", "scenario_from_trace": "Scenario created from a run", "regression_run": "Regression suite run", "retention_run": "Old data cleaned up", "benchmark_started": "Benchmark run", "recovery_simulated": "Recovery simulated",
  "scenario_added": "Scenario added", "demo_seeded": "Demo data loaded", "ai_diagnosis_requested": "AI diagnosis requested",
 }
-SECURITY_ACTIONS = {"setup_completed", "login", "login_failed", "logout", "password_changed", "user_created", "user_updated", "password_reset", "api_key_created", "api_key_revoked", "settings_updated", "retention_run"}
+SECURITY_ACTIONS = {"policy_created", "policy_updated", "policy_toggled", "workspace_created", "api_key_rotated", "setup_completed", "login", "login_failed", "logout", "password_changed", "user_created", "user_updated", "password_reset", "api_key_created", "api_key_revoked", "settings_updated", "retention_run"}
 ROLES = [
  {"key": "viewer", "label": "Viewer", "plain": "Can look at everything but change nothing."},
  {"key": "member", "label": "Member", "plain": "Can also run benchmarks and simulations, load demo data, add scenarios and send traces."},
  {"key": "admin", "label": "Admin", "plain": "Can also manage people, API keys and settings, and see the security history."},
 ]
-def meta(): return {"categories": CATEGORIES, "severities": SEVERITIES, "severity_colors": SEVERITY_COLORS, "roles": ROLES, "actions": ACTIONS, "metrics": METRICS}
+RISK_LEVELS = [{"key": "low", "min": 0}, {"key": "medium", "min": 25}, {"key": "high", "min": 50}, {"key": "critical", "min": 75}]
+POLICY_ACTIONS = {"ALLOW": "Let it run", "WARN": "Let it run, but warn", "DEFER": "Hold until more information arrives", "REQUIRE_APPROVAL": "A human must approve first", "BLOCK": "Stop it before it runs"}
+MODES = {"observe": "Only watch and record. Nothing is ever stopped.", "warn": "Warn about problems but never stop anything.", "enforce": "Stop actions that policies forbid and wait for required approvals."}
+def meta(): return {"categories": CATEGORIES, "severities": SEVERITIES, "severity_colors": SEVERITY_COLORS, "risk_levels": RISK_LEVELS, "policy_actions": POLICY_ACTIONS, "modes": MODES, "roles": ROLES, "actions": ACTIONS, "metrics": METRICS}

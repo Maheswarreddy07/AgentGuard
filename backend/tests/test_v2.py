@@ -7,6 +7,7 @@ from app.db.session import make_engine
 from tests.test_api import E
 
 ROOT = Path(__file__).resolve().parents[2] / "benchmarks/scenarios"
+N_DEMO = sum(1 for f in (ROOT / "v1").glob("*.json") if f.stem.endswith(("-000", "-001")))   # demo seeding loads the first two of every scenario family
 
 @pytest.fixture
 def c(tmp_path):
@@ -14,9 +15,9 @@ def c(tmp_path):
     return TestClient(create_app("sqlite:///:memory:", tmp_path))
 
 def test_demo_seed_idempotent_and_summaries(c):
-    assert c.post("/api/v1/demo/seed").json()["seeded"] == 28 and c.post("/api/v1/demo/seed").json()["seeded"] == 0
+    assert c.post("/api/v1/demo/seed").json()["seeded"] == N_DEMO and c.post("/api/v1/demo/seed").json()["seeded"] == 0
     f = c.get("/api/v1/traces/facets").json()
-    assert f["total"] == 28 and f["flagged"] + f["clean"] == 28 and "critical" in f["severity"]
+    assert f["total"] == N_DEMO and f["flagged"] + f["clean"] == N_DEMO and "critical" in f["severity"]
 
 def test_trace_filters_and_sort(c):
     c.post("/api/v1/demo/seed")
@@ -31,7 +32,7 @@ def test_trace_filters_and_sort(c):
 def test_overview_incidents_and_error_shape(c):
     c.post("/api/v1/demo/seed")
     live = c.get("/api/v1/metrics/overview").json()["live"]
-    assert live["total_runs"] == 28 and live["recent_incidents"] and live["by_severity"]
+    assert live["total_runs"] == N_DEMO and live["recent_incidents"] and live["by_severity"]
     err = c.get("/api/v1/traces/nope").json()["error"]
     assert err["code"] == "http_error"
     assert c.post("/api/v1/traces", json={"trace_id": "x", "events": [{"bad": 1}]}).json()["error"]["code"] == "validation_error"
@@ -69,7 +70,4 @@ def test_old_database_is_upgraded_in_place(tmp_path):
     con.execute("insert into traces values ('legacy','a','2026-01-01 00:00:00')"); con.commit(); con.close()
     c = TestClient(create_app(f"sqlite:///{db}", tmp_path))  # adds columns + backfills
     assert c.get("/api/v1/traces").status_code == 200
-    # a trace stored by the previous version (summary columns present, category_severity missing) is backfilled
-    con = sqlite3.connect(db); con.execute("update traces set category_severity = NULL"); con.commit(); con.close()
-    c2 = TestClient(create_app(f"sqlite:///{db}", tmp_path))
-    assert c2.get("/api/v1/metrics/overview").status_code == 200
+    assert c.get("/api/v1/traces/legacy").json()["trace_id"] == "legacy"

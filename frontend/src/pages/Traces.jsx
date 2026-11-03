@@ -10,7 +10,7 @@ export default function Traces({ params }) {
   const set = (k, v) => go("/traces", { ...p, [k]: v, ...(k !== "page" ? { page: "" } : {}) });
   const [qq, setQq] = useState(p.q);
   useEffect(() => { const t = setTimeout(() => qq !== p.q && set("q", qq), 350); return () => clearTimeout(t); }, [qq]); // eslint-disable-line
-  const page = Number(p.page) || 0, keys = ["q", "status", "severity", "category", "agent"];
+  const page = Number(p.page) || 0, keys = ["q", "status", "severity", "category", "agent", "outcome"];
   const qs = new URLSearchParams({ limit: LIMIT, offset: page * LIMIT, sort: p.sort, ...Object.fromEntries(keys.filter((k) => p[k]).map((k) => [k, p[k]])) }).toString();
   const list = useApi(`/api/v1/traces?${qs}`), fac = useApi("/api/v1/traces/facets");
   const f = fac.data, active = keys.filter((k) => p[k]);
@@ -19,7 +19,7 @@ export default function Traces({ params }) {
   if (f && f.total === 0) return <Empty title="No traces yet" icon="📭"><p className="muted">Send traces from your agent with the SDK, or explore with synthetic demo data.</p><button className="btn primary" disabled={busy || !can("member")} onClick={seed}>Load demo data</button></Empty>;
   const sevs = [...meta.severities].reverse(), sevTotal = sevs.reduce((n, s) => n + (f?.severity[s] ?? 0), 0);
   const topCats = f ? Object.entries(f.category).sort((a, b) => b[1] - a[1]).slice(0, 5) : [], maxCat = topCats[0]?.[1] || 1;
-  const pill = (k) => ({ q: `Search: “${p.q}”`, status: p.status === "flagged" ? "Flagged only" : "Healthy only", severity: `Severity: ${p.severity}`, category: catLabel(meta, p.category), agent: `Agent: ${p.agent}` })[k];
+  const pill = (k) => ({ outcome: `Outcome: ${p.outcome}`, q: `Search: “${p.q}”`, status: p.status === "flagged" ? "Flagged only" : "Healthy only", severity: `Severity: ${p.severity}`, category: catLabel(meta, p.category), agent: `Agent: ${p.agent}` })[k];
   return (
     <div className="stack">
       {f && (
@@ -41,8 +41,9 @@ export default function Traces({ params }) {
       <Card>
         <div className="filters">
           <label className="field grow">Search by run ID<input value={qq} onChange={(e) => setQq(e.target.value)} placeholder="type part of an ID…" /></label>
-          <label className="field">Order<select value={p.sort} onChange={(e) => set("sort", e.target.value)}><option value="newest">Newest first</option><option value="severity">Most severe first</option><option value="events">Longest runs first</option></select></label>
+          <label className="field">Order<select value={p.sort} onChange={(e) => set("sort", e.target.value)}><option value="newest">Newest first</option><option value="severity">Most severe first</option><option value="events">Longest runs first</option><option value="risk">Riskiest first</option></select></label>
           {f && <label className="field">Agent<select value={p.agent} onChange={(e) => set("agent", e.target.value)}><option value="">All agents</option>{Object.keys(f.agent).map((a) => <option key={a}>{a}</option>)}</select></label>}
+          {f && <label className="field">Outcome<select value={p.outcome} onChange={(e) => set("outcome", e.target.value)}><option value="">Any outcome</option>{Object.entries(f.outcome).map(([k, n]) => <option key={k} value={k}>{k} ({n})</option>)}</select></label>}
           {f && <label className="field">Problem<select value={p.category} onChange={(e) => set("category", e.target.value)}><option value="">Any problem</option>{Object.entries(f.category).map(([k, n]) => <option key={k} value={k}>{catLabel(meta, k)} ({n})</option>)}</select></label>}
         </div>
         {active.length > 0 && <div className="chips"><span className="muted">Showing only:</span>{active.map((k) => <Chip key={k} active onRemove onClick={() => { if (k === "q") setQq(""); set(k, ""); }}>{pill(k)}</Chip>)}<button className="linkbtn" onClick={() => { setQq(""); go("/traces"); }}>Clear all</button></div>}
@@ -56,10 +57,11 @@ export default function Traces({ params }) {
             <li key={t.trace_id}><a className="trace-card" href={"#/traces/" + t.trace_id} style={{ "--c": c }}>
               <span className="tc-ico" aria-hidden="true">{bad ? "!" : "✓"}</span>
               <div className="tc-main">
-                <div className="tc-top"><b className="mono">{t.trace_id}</b><span className="badge sev" style={{ "--c": c }}>{bad ?? "healthy"}</span></div>
+                <div className="tc-top"><b className="mono">{t.trace_id}</b><span className="row"><span className="badge">{t.outcome}</span>{t.risk_score > 0 && <span className="badge" title="Highest risk score reached">risk {t.risk_score}</span>}{t.blocked_actions > 0 && <span className="badge" style={{ color: "var(--bad)" }}>{t.blocked_actions} blocked</span>}<span className="badge sev" style={{ "--c": c }}>{bad ?? "healthy"}</span></span></div>
+                {t.task && <div className="muted small">Task: {t.task}</div>}
                 <div className="tc-head">{t.headline ?? "No issues detected — this run looks healthy."}</div>
                 <MiniStrip steps={t.preview} />
-                <div className="tc-meta">{t.categories.map((k) => <span key={k} className="tag">{catLabel(meta, k)}</span>)}<span className="muted">{t.n_events} steps · {t.agent_name} · {timeAgo(t.created_at)}</span></div>
+                <div className="tc-meta">{t.categories.map((k) => <span key={k} className="tag">{catLabel(meta, k)}</span>)}<span className="muted">{t.n_events} steps · {t.agent_name}{t.mode ? ` · ${t.mode} mode` : ""} · {timeAgo(t.created_at)}</span></div>
               </div>
               <span className="go">Open →</span>
             </a></li>);

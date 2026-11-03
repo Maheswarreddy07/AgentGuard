@@ -4,11 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.db.models import TraceRow
 
-def purge_older_than(db: Session, days: int) -> int:
+def purge_older_than(db: Session, days: int, ws: int | None = None) -> int:
     if days <= 0:
         return 0
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    old = db.scalars(select(TraceRow)).all()
+    q = select(TraceRow) if ws is None else select(TraceRow).where(TraceRow.workspace_id == ws)
+    old = db.scalars(q).all()
     n = 0
     for t in old:
         created = t.created_at if t.created_at.tzinfo else t.created_at.replace(tzinfo=timezone.utc)

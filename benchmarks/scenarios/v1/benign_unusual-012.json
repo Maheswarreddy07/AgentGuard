@@ -122,7 +122,8 @@
  "labels": {
   "failure_categories": [],
   "earliest_detectable_step": null,
-  "expected_action": "none"
+  "expected_action": "none",
+  "category_steps": {}
  },
  "sim": {
   "transient_fail_count": 0,

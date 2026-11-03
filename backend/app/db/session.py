@@ -1,8 +1,9 @@
 import os
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.db.models import Base
+from app.db.upgrade import add_missing_columns, backfill_workspace_ids, upgrade_to_workspaces
 
 def make_engine(url: str | None = None):
     url = url or os.getenv("DATABASE_URL", "sqlite:///./agentguard.db")
@@ -13,21 +14,13 @@ def make_engine(url: str | None = None):
             kw["poolclass"] = StaticPool
     eng = create_engine(url, **kw)
     if os.getenv("AUTO_CREATE_TABLES", "1") == "1":  # prod sets 0 and uses `alembic upgrade head`
+        with eng.begin() as conn:
+            upgrade_to_workspaces(conn)       # pre-workspace databases: rebuild traces/events/settings, keeping the data
         Base.metadata.create_all(eng)
-        _add_missing_columns(eng)
+        with eng.begin() as conn:
+            add_missing_columns(conn)
+            backfill_workspace_ids(conn)
     return eng
-
-def _add_missing_columns(eng) -> None:
-    """Dev convenience: upgrade an older local DB in place. Production uses Alembic."""
-    insp = inspect(eng)
-    for name, table in Base.metadata.tables.items():
-        if not insp.has_table(name):
-            continue
-        have = {c["name"] for c in insp.get_columns(name)}
-        for col in table.columns:
-            if col.name not in have:
-                with eng.begin() as conn:
-                    conn.execute(text(f'ALTER TABLE {name} ADD COLUMN {col.name} {col.type.compile(eng.dialect)}'))
 
 def make_session_factory(engine):
     return sessionmaker(engine, expire_on_commit=False)

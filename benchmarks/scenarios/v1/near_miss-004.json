@@ -1,0 +1,68 @@
+{
+ "id": "near_miss-004",
+ "category": "near_miss",
+ "description": "[SYNTHETIC] Look-alike that must not alert.",
+ "task": "Resolve a customer support request.",
+ "events": [
+  {
+   "event_id": "e0",
+   "step_index": 0,
+   "event_type": "run_start",
+   "metadata": {
+    "required_tools": [],
+    "budget": {
+     "max_tool_calls": 10,
+     "max_tokens": 5000
+    }
+   }
+  },
+  {
+   "event_id": "e1",
+   "step_index": 1,
+   "event_type": "model_request",
+   "tokens_in": 100,
+   "tokens_out": 50
+  },
+  {
+   "event_id": "e2",
+   "step_index": 2,
+   "event_type": "tool_call",
+   "tool_name": "lookup_order",
+   "tool_input": {
+    "order_id": 3
+   },
+   "metadata": {
+    "read_only": true
+   }
+  },
+  {
+   "event_id": "e3",
+   "step_index": 3,
+   "event_type": "tool_result",
+   "tool_name": "lookup_order",
+   "tool_output": {
+    "ok": true,
+    "n": 3
+   }
+  },
+  {
+   "event_id": "e4",
+   "step_index": 4,
+   "event_type": "run_end",
+   "metadata": {
+    "claimed_success": true
+   }
+  }
+ ],
+ "labels": {
+  "failure_categories": [],
+  "earliest_detectable_step": null,
+  "expected_action": "none",
+  "category_steps": {}
+ },
+ "sim": {
+  "transient_fail_count": 0,
+  "corrected_args_valid": true,
+  "evidence_available": true
+ }
+}

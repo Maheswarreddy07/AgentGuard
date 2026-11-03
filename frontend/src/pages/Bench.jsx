@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api, catLabel, download, useApi, useAuth, useMeta } from "../api";
+import BenchExtras from "../components/BenchExtras";
 import { BAD, Caption, Card, Chip, GOOD, Info, Kpi, MUTED, State, chartTip, pct } from "../ui";
 
 const human = (s) => s.replace(/_/g, " ");
@@ -9,6 +10,7 @@ const heat = (v) => (v == null ? "transparent" : `rgba(${v >= 0.9 ? "61,220,151"
 export default function Bench({ params = {} }) {
   const meta = useMeta(), { can } = useAuth();
   const sc = useApi("/api/v1/scenarios"), hist = useApi("/api/v1/benchmarks");
+  const [split, setSplit] = useState("");
   const [picked, setPicked] = useState(new Set());
   const [run, setRun] = useState(null);           // {id, m, results, mistakes}
   const [phase, setPhase] = useState("idle");      // idle | running | error
@@ -28,7 +30,7 @@ export default function Bench({ params = {} }) {
     setPhase("running"); setErr(null);
     try {
       const ids = picked.size ? sc.data.items.filter((s) => picked.has(s.category)).map((s) => s.id) : undefined;
-      const { run_id } = await api("/api/v1/benchmarks/run", { method: "POST", body: JSON.stringify({ scenario_ids: ids }) });
+      const { run_id } = await api("/api/v1/benchmarks/run", { method: "POST", body: JSON.stringify({ scenario_ids: ids, split: split || undefined }) });
       for (let i = 0; i < 120; i++) {   // poll until the backend reports a terminal state
         const g = await api(`/api/v1/benchmarks/${run_id}`);
         if (g.status === "completed") { await load(run_id); hist.reload(); setPhase("idle"); return; }
@@ -54,6 +56,7 @@ export default function Bench({ params = {} }) {
       <Card title="1 · Choose what to test" hint="Leave everything unselected to run all scenarios.">
         <div className="chips">{Object.entries(groups).map(([c, n]) => <Chip key={c} active={picked.has(c)} onClick={() => toggle(c)}>{human(c)} ({n})</Chip>)}</div>
         <div className="row" style={{ marginTop: 12 }}>
+          <label className="field inline">Test set<select value={split} onChange={(e) => setSplit(e.target.value)}><option value="">All scenarios</option><option value="dev">Development set</option><option value="validation">Validation set</option><option value="test">Held-out test set</option></select></label>
           <button className="btn primary" disabled={phase === "running" || sc.loading || !can("member")} title={can("member") ? "" : "Members and admins can run benchmarks"} onClick={start}>{phase === "running" ? "Running…" : `Run ${picked.size ? "selected" : "all"} scenarios`}</button>
           {hist.data?.items?.filter((r) => r.status === "completed").length > 0 && (
             <label className="field inline">Or open a past run<select value="" onChange={(e) => e.target.value && load(e.target.value)}><option value="">Choose…</option>
@@ -98,6 +101,7 @@ export default function Bench({ params = {} }) {
             {Object.entries(m.per_category).map(([k, v]) => <tr key={k}><td>{catLabel(meta, k)}</td>{[v.precision, v.recall, v.f1].map((x, i) => <td key={i} style={{ background: heat(x) }}>{pct(x, 0)}</td>)}<td>{v.support}</td></tr>)}</tbody></table></div>
         </Card>
 
+        <BenchExtras m={m} />
         <Card title={`Where AgentGuard was wrong (${run.mistakes.length})`} hint="Scenarios where what was detected differs from the ground truth.">
           {run.mistakes.length === 0 ? <p className="muted">No mistakes in this run.</p> : <ul className="mist">{run.mistakes.map((r) => {
             const missed = r.true.filter((x) => !r.pred.includes(x)), extra = r.pred.filter((x) => !r.true.includes(x));

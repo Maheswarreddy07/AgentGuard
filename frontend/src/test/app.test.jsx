@@ -10,7 +10,8 @@ const META = { categories: { unauthorized_action: { label: "Action without appro
   roles: [{ key: "viewer", label: "Viewer", plain: "look only" }, { key: "member", label: "Member", plain: "can run things" }, { key: "admin", label: "Admin", plain: "everything" }] };
 const OPEN = { auth_required: false, setup_required: false, session_hours: 12, min_password_length: 10 };
 const ADMIN = { kind: "user", id: 1, email: "ada@x.io", name: "Ada", role: "admin" };
-const OV = { live: { total_runs: 4, runs_with_findings: 1, clean_runs: 3, failure_rate: 0.25, by_category: { unauthorized_action: 1 }, category_stats: { unauthorized_action: { count: 1, max_severity: "critical" } }, by_severity: { critical: 1 },
+const OPS = { successful_runs: 3, failed_runs: 1, blocked_runs: 0, running_runs: 0, risky_runs: 1, critical_runs: 1, blocked_actions: 2, pending_approvals: 1, recovery_attempts: 0, avg_duration_ms: 1500, avg_risk: 12.5, total_cost_usd: 0.25 };
+const OV = { live: { ...OPS, total_runs: 4, runs_with_findings: 1, clean_runs: 3, failure_rate: 0.25, by_category: { unauthorized_action: 1 }, category_stats: { unauthorized_action: { count: 1, max_severity: "critical" } }, by_severity: { critical: 1 },
   recent_incidents: [{ trace_id: "t1", agent_name: "a", created_at: "2026-01-01T00:00:00", n_events: 3, status: "flagged", max_severity: "critical", categories: ["unauthorized_action"], headline: "Refund ran without approval" }] }, benchmark: null };
 const SETTINGS = { fields: [
   { key: "max_retries", label: "Automatic retries allowed", group: "safety", group_label: "Recovery safety", unit: "attempts", min: 1, max: 10, default: 3, value: 3, modified: false, help: "How many times to retry." },

@@ -63,7 +63,8 @@
    "goal_constraint_violation"
   ],
   "earliest_detectable_step": 2,
-  "expected_action": "escalate"
+  "expected_action": "escalate",
+  "category_steps": {}
  },
  "sim": {
   "transient_fail_count": 0,

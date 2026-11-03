@@ -50,7 +50,8 @@
    "incomplete_execution"
   ],
   "earliest_detectable_step": 2,
-  "expected_action": "none"
+  "expected_action": "none",
+  "category_steps": {}
  },
  "sim": {
   "transient_fail_count": 0,

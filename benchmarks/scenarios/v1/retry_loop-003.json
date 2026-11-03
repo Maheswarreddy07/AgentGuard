@@ -95,7 +95,10 @@
    "tool_execution_failure"
   ],
   "earliest_detectable_step": 2,
-  "expected_action": "stop"
+  "expected_action": "stop",
+  "category_steps": {
+   "repeated_failures": 6
+  }
  },
  "sim": {
   "transient_fail_count": 0,

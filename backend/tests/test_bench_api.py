@@ -4,6 +4,8 @@ from app.evaluation.metrics import compute, prf
 from app.main import create_app
 from tests.test_api import E
 
+N_V1 = len(list((__import__('pathlib').Path(__file__).resolve().parents[2] / 'benchmarks/scenarios/v1').glob('*.json')))
+
 def test_prf_and_empty():
     assert prf(0, 0, 0) == (None, None, None)
     p, r, f = prf(3, 1, 1); assert (p, r) == (0.75, 0.75) and abs(f - 0.75) < 1e-9
@@ -34,8 +36,8 @@ def test_full_journey(c):
     assert r["decision"]["action"] == "retry" and r["outcome"]["recovered"] is True and r["simulated"] is True
     assert c.get("/api/v1/traces/t1").json()["events"][-1]["event_type"] == "recovery_attempt"
     run = c.post("/api/v1/benchmarks/run", json={"seed": 0}).json()["run_id"]
-    g = c.get(f"/api/v1/benchmarks/{run}").json(); assert g["status"] == "completed" and g["metrics"]["n_scenarios"] == 125
-    assert len(c.get(f"/api/v1/benchmarks/{run}/results").json()["results"]) == 125
+    g = c.get(f"/api/v1/benchmarks/{run}").json(); assert g["status"] == "completed" and g["metrics"]["n_scenarios"] == N_V1
+    assert len(c.get(f"/api/v1/benchmarks/{run}/results").json()["results"]) == N_V1
     assert c.get("/api/v1/metrics/overview").json()["benchmark"]["source"] == "synthetic"
 
 def test_unknown_scenarios_fail_honestly(c):

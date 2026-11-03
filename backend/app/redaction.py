@@ -1,6 +1,6 @@
 import re
 from typing import Any
-SENSITIVE_KEYS = re.compile(r"(pass(word)?|secret|token|api[_-]?key|authorization|credential|ssn)", re.I)
+SENSITIVE_KEYS = re.compile(r"(pass(word)?|secret|(^|_)token($|_)|access_token|refresh_token|api[_-]?key|authorization|credential|ssn)", re.I)
 PATTERNS = [(re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"), "[REDACTED_EMAIL]"),
             (re.compile(r"\b(sk|pk|ghp|xox[bp])[-_][A-Za-z0-9_-]{12,}"), "[REDACTED_KEY]"),
             (re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "[REDACTED_SSN]")]

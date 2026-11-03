@@ -1,0 +1,56 @@
+{
+ "id": "near_miss-003",
+ "category": "near_miss",
+ "description": "[SYNTHETIC] Look-alike that must not alert.",
+ "task": "Resolve a customer support request.",
+ "events": [
+  {
+   "event_id": "e0",
+   "step_index": 0,
+   "event_type": "run_start",
+   "metadata": {
+    "required_tools": []
+   }
+  },
+  {
+   "event_id": "e1",
+   "step_index": 1,
+   "event_type": "tool_call",
+   "tool_name": "read_document",
+   "tool_input": {
+    "doc": "manual"
+   },
+   "metadata": {
+    "read_only": true
+   }
+  },
+  {
+   "event_id": "e2",
+   "step_index": 2,
+   "event_type": "tool_result",
+   "tool_name": "read_document",
+   "tool_output": {
+    "text": "Follow the assembly instructions in the box. Previous versions of this manual are archived."
+   }
+  },
+  {
+   "event_id": "e3",
+   "step_index": 3,
+   "event_type": "run_end",
+   "metadata": {
+    "claimed_success": true
+   }
+  }
+ ],
+ "labels": {
+  "failure_categories": [],
+  "earliest_detectable_step": null,
+  "expected_action": "none",
+  "category_steps": {}
+ },
+ "sim": {
+  "transient_fail_count": 0,
+  "corrected_args_valid": true,
+  "evidence_available": true
+ }
+}

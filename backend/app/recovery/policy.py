@@ -33,6 +33,10 @@ def decide(events: list[Event], findings: list[Finding], max_retries: int = MAX_
     cats = {f.category for f in findings}
     if cats & {C.UNAUTHORIZED, C.WORKFLOW, C.GOAL_CONSTRAINT}:
         return Decision(action="escalate", reason="Policy/authorization violation: human approval required.")
+    if cats & {C.SENSITIVE, C.INJECTION}:
+        return Decision(action="escalate", reason="Sensitive data or possible prompt injection: a human must review before continuing.")
+    if cats & {C.REPEATED_CALLS, C.LOOP, C.RESOURCE} and not cats & {C.RETRY_LOOP}:
+        return Decision(action="stop", reason="The agent is repeating itself, going in circles or over budget; stop and replan instead of continuing.")
     if C.UNSUPPORTED_SUCCESS in cats:
         return Decision(action="escalate", reason="Success claim is unsupported; mark failed and escalate.")
     if C.RETRY_LOOP in cats:

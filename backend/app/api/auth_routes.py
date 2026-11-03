@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from app.api.deps import Principal, aware, audit, bearer, get_db, principal
 from app.auth import EMAIL_RE, burn_time, hash_password, min_password_length, new_session_token, password_problem, sha, verify_password
-from app.db.models import SessionRow, UserRow
+from app.db.models import SessionRow, UserRow, WorkspaceRow
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -22,7 +22,7 @@ class ChangePw(BaseModel):
     new_password: str = Field(max_length=200)
 
 def user_dict(u: UserRow) -> dict:
-    return {"id": u.id, "email": u.email, "name": u.name, "role": u.role, "is_active": u.is_active, "created_at": u.created_at, "last_login_at": u.last_login_at}
+    return {"id": u.id, "workspace_id": u.workspace_id, "email": u.email, "name": u.name, "role": u.role, "is_active": u.is_active, "created_at": u.created_at, "last_login_at": u.last_login_at}
 
 def session_hours() -> int: return int(os.getenv("SESSION_HOURS", "12"))
 
@@ -47,9 +47,11 @@ def setup(body: Setup, request: Request, db: Session = Depends(get_db)):
     email = body.email.strip().lower()
     if not EMAIL_RE.match(email): raise HTTPException(422, "Enter a valid email address.")
     if (msg := password_problem(body.password, email)): raise HTTPException(422, msg)
-    u = UserRow(email=email, name=body.name.strip() or email.split("@")[0], password_hash=hash_password(body.password), role="admin")
+    ws = db.scalar(select(WorkspaceRow).order_by(WorkspaceRow.id)) or WorkspaceRow(name="Default workspace")
+    db.add(ws); db.flush()
+    u = UserRow(workspace_id=ws.id, email=email, name=body.name.strip() or email.split("@")[0], password_hash=hash_password(body.password), role="admin")
     db.add(u); db.commit()
-    audit(db, Principal(kind="user", email=email, role="admin"), "setup_completed")
+    audit(db, Principal(kind="user", email=email, role="admin", workspace_id=ws.id), "setup_completed")
     return open_session(db, request, u)
 
 @router.post("/login")
@@ -60,7 +62,7 @@ def login(body: Creds, request: Request, db: Session = Depends(get_db)):
     u = db.scalar(select(UserRow).where(UserRow.email == email))
     max_fail, lock_min = int(os.getenv("AUTH_MAX_FAILURES", "5")), int(os.getenv("AUTH_LOCK_MINUTES", "15"))
     if u and u.locked_until and aware(u.locked_until) > now:
-        audit(db, None, "login_failed", email, {"reason": "locked"}, actor=email)
+        audit(db, None, "login_failed", email, {"reason": "locked"}, actor=email, ws=u.workspace_id)
         raise HTTPException(429, f"Too many failed attempts. Try again in {lock_min} minutes or ask an admin.")
     ok = bool(u and u.is_active and verify_password(body.password, u.password_hash))
     if not u: burn_time(body.password)
@@ -69,10 +71,10 @@ def login(body: Creds, request: Request, db: Session = Depends(get_db)):
             u.failed_attempts += 1
             if u.failed_attempts >= max_fail: u.locked_until = now + timedelta(minutes=lock_min); u.failed_attempts = 0
             db.commit()
-        audit(db, None, "login_failed", email, {"reason": "bad credentials"}, actor=email)
+        audit(db, None, "login_failed", email, {"reason": "bad credentials"}, actor=email, ws=u.workspace_id if u else None)
         raise HTTPException(401, "Incorrect email or password.")  # same message whether or not the email exists
     out = open_session(db, request, u)
-    audit(db, Principal(kind="user", email=u.email, role=u.role, user_id=u.id), "login")
+    audit(db, Principal(kind="user", email=u.email, role=u.role, user_id=u.id, workspace_id=u.workspace_id or 1), "login")
     return out
 
 @router.post("/logout")
@@ -86,8 +88,10 @@ def logout(request: Request, p: Principal = Depends(principal), db: Session = De
 @router.get("/me")
 def me(p: Principal = Depends(principal), db: Session = Depends(get_db)):
     if p.kind == "user":
-        return {"kind": "user", **user_dict(db.get(UserRow, p.user_id))}
-    return {"kind": p.kind, "email": p.email, "name": p.email, "role": p.role}
+        u = db.get(UserRow, p.user_id); ws = db.get(WorkspaceRow, p.workspace_id)
+        return {"kind": "user", **user_dict(u), "workspace": {"id": ws.id, "name": ws.name} if ws else None}
+    ws = db.get(WorkspaceRow, p.workspace_id)
+    return {"kind": p.kind, "email": p.email, "name": p.email, "role": p.role, "workspace": {"id": ws.id, "name": ws.name} if ws else None}
 
 @router.post("/change-password")
 def change_password(body: ChangePw, request: Request, p: Principal = Depends(principal), db: Session = Depends(get_db)):

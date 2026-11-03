@@ -28,3 +28,20 @@ Errors always look like `{"error":{"code","message","details?"}}` (404/409/422/4
 ```bash
 curl -s -XPOST localhost:8000/api/v1/benchmarks/run -H 'content-type: application/json' -d '{"seed":0}'
 ```
+
+
+## Added in v0.4 (all need a session token or an `agent` API key where noted)
+| Method | Path | Notes |
+|---|---|---|
+| POST | /api/v1/runtime/check | **agent key or member+**. Before-the-tool decision: `{allowed, effective, reason, matches, risk, approval_request_id}` |
+| GET/POST/PUT | /api/v1/policies, /policies/{id} | admin writes; versioned. `POST /policies/{id}/toggle`, `/rollback` |
+| GET | /api/v1/policies/templates, /policies/evaluations | form specs + starter templates; decision log |
+| POST | /api/v1/policies/test, /policies/simulate | what-if; change nothing |
+| GET | /api/v1/approvals, /approvals/{id} | agent key may read one; humans see evidence |
+| POST | /api/v1/approvals/{id}/decision | member+; reject/changes need a note |
+| GET | /api/v1/risk/predictions, /risk/metrics, /risk/monitor | |
+| GET | /api/v1/findings | filter by severity, category, trace, source |
+| GET/POST | /api/v1/agents | registry |
+| GET | /api/v1/traces/compare, /traces/{id}/export | |
+| POST | /api/v1/workspaces | first workspace's admins only |
+| POST | /api/v1/api-keys/{id}/rotate | admin |

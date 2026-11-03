@@ -1,6 +1,6 @@
-const ICON = { run_start: "▶", run_end: "■", tool_call: "→", tool_result: "←", human_approval: "✔", recovery_attempt: "↻", model_request: "…", validation_failure: "!" };
+const ICON = { policy_check: "🛡", risk_detected: "⚠", llm_response: "…", recovery_completed: "↻", agent_error: "!", run_start: "▶", run_end: "■", tool_call: "→", tool_result: "←", human_approval: "✔", recovery_attempt: "↻", model_request: "…", validation_failure: "!" };
 const NAME = { run_start: "Start", run_end: "End", human_approval: "Approval", recovery_attempt: "Recovery" };
-export const eventName = (e) => e.tool_name ? `${e.event_type === "tool_call" ? "Call" : "Result"}: ${e.tool_name}` : NAME[e.event_type] ?? e.event_type.replace(/_/g, " ");
+export const eventName = (e) => e.event_type === "policy_check" ? `Policy: ${e.metadata?.effective?.replace(/_/g, " ").toLowerCase() ?? "check"}` : e.event_type === "risk_detected" ? "Risk warning" : e.tool_name ? `${e.event_type === "tool_call" ? "Call" : "Result"}: ${e.tool_name}` : NAME[e.event_type] ?? e.event_type.replace(/_/g, " ");
 /** Horizontal story of a run. markers: {eventId: ["Origin", ...]}, evidence: Set of event ids. */
 export default function Flow({ events, markers = {}, evidence = new Set(), selected, onSelect }) {
   return (

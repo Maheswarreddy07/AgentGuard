@@ -7,13 +7,19 @@ import Overview from "./pages/Overview";
 import Traces from "./pages/Traces";
 import TraceDetail from "./pages/TraceDetail";
 import History from "./pages/History";
+import Risk from "./pages/Risk";
+import Policies from "./pages/Policies";
+import Approvals from "./pages/Approvals";
 import Bench from "./pages/Bench";
 import Scenarios from "./pages/Scenarios";
 import Settings from "./pages/Settings";
 
 const NAV = [
   ["/overview", "◉", "Overview", "How healthy your agents are right now"],
-  ["/traces", "☰", "Traces", "Every agent run, and what went wrong in it"],
+  ["/traces", "☰", "Agent Runs", "Every agent run, and what went wrong in it"],
+  ["/risk", "📈", "Risk Monitor", "Runs that look like they are heading for trouble, and how often the warnings were right"],
+  ["/policies", "🛡", "Policy Center", "The rules agents must follow, checked before every action"],
+  ["/approvals", "✋", "Approvals", "Actions waiting for a person to say yes or no"],
   ["/history", "🕘", "History", "What happened, who did it, and how results changed over time"],
   ["/bench", "⚗", "Benchmark Lab", "Test AgentGuard against cases with known answers"],
   ["/scenarios", "❖", "Scenarios", "The test cases behind the benchmark"],
@@ -22,7 +28,8 @@ const NAV = [
 
 function Shell({ user, logout, authRequired }) {
   const { path, params } = useRoute();
-  const meta = useApi("/api/v1/meta"), health = useApi("/health");
+  const meta = useApi("/api/v1/meta"), health = useApi("/health"), pend = useApi("/api/v1/approvals?status=pending&limit=1");
+  useEffect(() => { const t = setInterval(pend.reload, 15000); return () => clearInterval(t); }, [pend.reload]);
   const rank = (r) => (meta.data?.roles ?? []).findIndex((x) => x.key === r);
   const can = useCallback((min) => rank(user.role) >= rank(min), [user.role, meta.data]); // eslint-disable-line
   const section = "/" + (path.split("/")[1] || "overview");
@@ -33,6 +40,9 @@ function Shell({ user, logout, authRequired }) {
   let page;
   if (detail) page = <TraceDetail id={decodeURIComponent(path.slice(8))} />;
   else if (section === "/traces") page = <Traces params={params} />;
+  else if (section === "/risk") page = <Risk />;
+  else if (section === "/policies") page = <Policies />;
+  else if (section === "/approvals") page = <Approvals />;
   else if (section === "/history") page = <History params={params} />;
   else if (section === "/bench") page = <Bench params={params} />;
   else if (section === "/scenarios") page = <Scenarios />;
@@ -44,7 +54,7 @@ function Shell({ user, logout, authRequired }) {
         <div className="app">
           <aside className="side">
             <div className="brand"><span className="logo">🛡</span> AgentGuard</div>
-            <nav aria-label="Main">{NAV.map(([p, icon, label]) => <button key={p} className={"nav" + (p === section ? " on" : "")} aria-current={p === section ? "page" : undefined} onClick={() => go(p)}><span aria-hidden="true">{icon}</span>{label}</button>)}</nav>
+            <nav aria-label="Main">{NAV.map(([p, icon, label]) => <button key={p} className={"nav" + (p === section ? " on" : "")} aria-current={p === section ? "page" : undefined} onClick={() => go(p)}><span aria-hidden="true">{icon}</span>{label}{p === "/approvals" && pend.data?.pending > 0 && <span className="nav-b" aria-label={`${pend.data.pending} waiting`}>{pend.data.pending}</span>}</button>)}</nav>
             <div className="side-foot">
               <div className="me"><span className="avatar" aria-hidden="true">{(user.name || user.email)[0].toUpperCase()}</span>
                 <div><div className="me-n">{user.name || user.email}</div><div className="muted small">{authRequired ? roleLabel(meta.data, user.role) : "Local mode — sign-in is off"}</div></div></div>

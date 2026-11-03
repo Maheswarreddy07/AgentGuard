@@ -47,7 +47,8 @@
    "unauthorized_action"
   ],
   "earliest_detectable_step": 1,
-  "expected_action": "escalate"
+  "expected_action": "escalate",
+  "category_steps": {}
  },
  "sim": {
   "transient_fail_count": 0,

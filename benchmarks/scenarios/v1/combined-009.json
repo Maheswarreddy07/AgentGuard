@@ -79,7 +79,10 @@
    "unsupported_success_claim"
   ],
   "earliest_detectable_step": 2,
-  "expected_action": "escalate"
+  "expected_action": "escalate",
+  "category_steps": {
+   "repeated_failures": 6
+  }
  },
  "sim": {
   "transient_fail_count": 0,
