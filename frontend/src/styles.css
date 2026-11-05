@@ -95,3 +95,15 @@ tr.clickable{cursor:pointer}tr.clickable:hover{background:var(--panel2)}.signals
 .policy{--c:var(--acc);background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px}.policy.off{opacity:.6}
 .modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.modes>div{display:flex;flex-direction:column;background:var(--panel2);border-radius:9px;padding:10px 12px;text-transform:none}.modes b{text-transform:capitalize}
 .nav{position:relative}.nav-b{margin-left:auto;background:var(--bad);color:#fff;border-radius:99px;font-size:11px;font-weight:700;padding:1px 7px}
+
+/* ---- v5: reusable components ---- */
+.page-h-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.nav-group{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}.nav-h{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);padding:8px 12px 2px}
+.side{overflow-y:auto}
+.tech{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin-top:6px}.tech summary{cursor:pointer;color:var(--mut);font-size:13px}.tech pre{margin-top:8px;max-height:260px}
+.problem-card{--c:var(--bad);background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.agent-card{--c:var(--good);text-align:left;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:8px;cursor:pointer;font:inherit}.agent-card:hover{border-color:var(--c)}
+.agent-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
+.wiz-steps{list-style:none;display:flex;gap:6px;padding:0;margin:0 0 16px;flex-wrap:wrap}.wiz-steps button{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);color:var(--mut);padding:8px 14px;border-radius:99px;font:inherit;cursor:pointer}
+.wiz-steps li.on button{border-color:var(--acc);color:var(--fg);font-weight:600}.wiz-steps li.done button{color:var(--good)}.wizard pre{white-space:pre-wrap}
+.btnlike.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 20%,transparent)}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, roleLabel, useApi, useAuth, useMeta } from "../api";
+import { authApi, paths, roleLabel, settingsApi, teamApi, useApi, useAuth, useMeta } from "../api";
 import { Card, CopyButton, Empty, State, Tabs, Toggle, timeAgo, useToast, when } from "../ui";
 
 const Status = ({ tone, title, children }) => <div className="statcard"><span className={"dot " + tone} /><div><b>{title}</b><div className="muted small">{children}</div></div></div>;
@@ -37,11 +37,11 @@ function Safety({ s, reload }) {
     setBusy(true);
     try {
       const values = Object.fromEntries(s.fields.filter((f) => vals[f.key] !== base.values[f.key]).map((f) => [f.key, vals[f.key] === f.default ? null : vals[f.key]]));
-      const r = await api("/api/v1/settings", { method: "PUT", body: JSON.stringify({ values, disabled_rules: off }) });
+      const r = await settingsApi.save(values, off);
       toast(r.changes.length ? "Saved. " + r.changes.join(" · ") : "Nothing needed changing."); reload();
     } catch (e) { toast(e.message, "bad"); } finally { setBusy(false); }
   }
-  async function cleanup() { try { const r = await api("/api/v1/settings/cleanup", { method: "POST" }); toast(`Cleaned up: ${r.deleted_traces} old trace(s) deleted.`); } catch (e) { toast(e.message, "bad"); } setConfirm(false); }
+  async function cleanup() { try { const r = await settingsApi.cleanup(); toast(`Cleaned up: ${r.deleted_traces} old trace(s) deleted.`); } catch (e) { toast(e.message, "bad"); } setConfirm(false); }
   const groups = [...new Set(s.fields.map((f) => f.group))];
   return (
     <div className="stack">
@@ -71,33 +71,30 @@ function Safety({ s, reload }) {
   );
 }
 
-function Connect({ s }) {
-  const { can } = useAuth(), toast = useToast(), admin = can("admin");
-  const keys = useApi(admin ? "/api/v1/api-keys" : null);
+function ApiKeys() {
+  const { can } = useAuth(), toast = useToast(), admin = can("admin"), keys = useApi(admin ? paths.apiKeys : null);
   const [name, setName] = useState(""), [fresh, setFresh] = useState(null);
-  const c = s.system.connect, snippet = fresh ? c.snippet.replace("YOUR_API_KEY", fresh.key) : c.snippet;
-  async function create() { try { setFresh(await api("/api/v1/api-keys", { method: "POST", body: JSON.stringify({ name }) })); setName(""); keys.reload(); } catch (e) { toast(e.message, "bad"); } }
-  async function revoke(k) { try { await api(`/api/v1/api-keys/${k.id}`, { method: "DELETE" }); toast(`Revoked “${k.name}”.`); keys.reload(); } catch (e) { toast(e.message, "bad"); } }
+  async function create() { try { setFresh(await teamApi.createKey(name)); setName(""); keys.reload(); } catch (e) { toast(e.message, "bad"); } }
+  async function rotate(k) { try { setFresh(await teamApi.rotateKey(k.id)); toast(`Rotated “${k.name}”: the old key stopped working.`); keys.reload(); } catch (e) { toast(e.message, "bad"); } }
+  async function revoke(k) { try { await teamApi.revokeKey(k.id); toast(`Revoked “${k.name}”.`); keys.reload(); } catch (e) { toast(e.message, "bad"); } }
   return (
     <div className="stack">
-      <Card title="Step 1 — Create an API key" sub="Your agent uses this key to send runs to AgentGuard. A key can only send data; it can’t read anything.">
-        {!admin ? <p className="muted">Ask an admin to create a key for you.</p> : (<>
+      <Card title="API keys" sub="A key lets one agent send its runs and ask for decisions. It cannot read anything. Keys are stored hashed and shown only once."
+        right={<a className="btn" href="#/integrations">Guided setup →</a>}>
+        {!admin ? <p className="muted">Ask an admin to create or rotate keys.</p> : (<>
           <div className="row"><label className="field grow">Key name (e.g. the agent it is for)<input value={name} onChange={(e) => setName(e.target.value)} placeholder="support-agent (production)" /></label><button className="btn primary" disabled={!name.trim()} onClick={create}>Create key</button></div>
           {fresh && <div className="keybox" role="status"><b>Your new key — copy it now, it won’t be shown again:</b><code>{fresh.key}</code><CopyButton text={fresh.key} /></div>}
           {keys.data && (keys.data.items.length === 0 ? <p className="muted">No keys yet.</p> : <div className="scroll"><table className="tbl"><thead><tr><th>Name</th><th>Starts with</th><th>Created</th><th>Last used</th><th /></tr></thead><tbody>{keys.data.items.map((k) => (
-            <tr key={k.id}><td>{k.name}</td><td className="mono">{k.prefix}…</td><td title={when(k.created_at)}>{timeAgo(k.created_at)} by {k.created_by}</td><td>{k.last_used_at ? timeAgo(k.last_used_at) : "never"}</td><td>{k.revoked_at ? <span className="badge">revoked</span> : <button className="btn" onClick={() => revoke(k)}>Revoke</button>}</td></tr>))}</tbody></table></div>)}
+            <tr key={k.id}><td>{k.name}</td><td className="mono">{k.prefix}…</td><td title={when(k.created_at)}>{timeAgo(k.created_at)} by {k.created_by}</td><td>{k.last_used_at ? timeAgo(k.last_used_at) : "never"}</td>
+              <td>{k.revoked_at ? <span className="badge">revoked</span> : <span className="row"><button className="btn" onClick={() => rotate(k)} title="Issue a new key and stop the old one immediately">Rotate</button><button className="btn" onClick={() => revoke(k)}>Revoke</button></span>}</td></tr>))}</tbody></table></div>)}
         </>)}
-      </Card>
-      <Card title="Step 2 — Install the SDK" right={<CopyButton text={c.install} />}><pre>{c.install}</pre></Card>
-      <Card title="Step 3 — Add this to your agent" right={<CopyButton text={snippet} />} sub={fresh ? "Your new key is already filled in." : "Replace YOUR_API_KEY with the key from step 1."}>
-        <pre>{snippet}</pre><p className="muted small">AgentGuard can only find problems you describe: declare an argument schema, required tools, and which actions are consequential. Its address here is <code>{c.base_url}</code>.</p>
       </Card>
     </div>
   );
 }
 
 function Team() {
-  const meta = useMeta(), { user } = useAuth(), toast = useToast(), users = useApi("/api/v1/users");
+  const meta = useMeta(), { user } = useAuth(), toast = useToast(), users = useApi(paths.users);
   const [f, setF] = useState({ email: "", name: "", role: "viewer", password: "" }), [reset, setReset] = useState({});
   const call = async (fn, ok) => { try { await fn(); if (ok) toast(ok); users.reload(); } catch (e) { toast(e.message, "bad"); } };
   return (
@@ -106,14 +103,14 @@ function Team() {
         <State loading={users.loading && !users.data} error={users.error} h={120} />
         {users.data && <div className="scroll"><table className="tbl"><thead><tr><th>Person</th><th>Role</th><th>Active</th><th>Last sign-in</th><th>Password</th></tr></thead><tbody>{users.data.items.map((u) => (
           <tr key={u.id}><td><b>{u.name}</b> {u.email === user.email && <span className="badge">you</span>}<div className="muted small">{u.email}</div></td>
-            <td><select aria-label={`Role for ${u.email}`} value={u.role} onChange={(e) => call(() => api(`/api/v1/users/${u.id}`, { method: "PATCH", body: JSON.stringify({ role: e.target.value }) }), "Role updated.")}>{meta.roles.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select></td>
-            <td><Toggle checked={u.is_active} label={`Active: ${u.email}`} onChange={(v) => call(() => api(`/api/v1/users/${u.id}`, { method: "PATCH", body: JSON.stringify({ is_active: v }) }), v ? "Re-enabled." : "Disabled and signed out.")} /></td>
+            <td><select aria-label={`Role for ${u.email}`} value={u.role} onChange={(e) => call(() => teamApi.updateUser(u.id, { role: e.target.value }), "Role updated.")}>{meta.roles.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select></td>
+            <td><Toggle checked={u.is_active} label={`Active: ${u.email}`} onChange={(v) => call(() => teamApi.updateUser(u.id, { is_active: v }), v ? "Re-enabled." : "Disabled and signed out.")} /></td>
             <td>{u.last_login_at ? timeAgo(u.last_login_at) : "never"}</td>
-            <td>{reset[u.id] === undefined ? <button className="btn" onClick={() => setReset({ ...reset, [u.id]: "" })}>Reset…</button> : <span className="row"><input type="password" aria-label={`New password for ${u.email}`} placeholder="new password" value={reset[u.id]} onChange={(e) => setReset({ ...reset, [u.id]: e.target.value })} /><button className="btn" onClick={() => call(() => api(`/api/v1/users/${u.id}/reset-password`, { method: "POST", body: JSON.stringify({ new_password: reset[u.id] }) }).then(() => setReset({ ...reset, [u.id]: undefined })), "Password reset; they were signed out.")}>Set</button></span>}</td></tr>))}</tbody></table></div>}
+            <td>{reset[u.id] === undefined ? <button className="btn" onClick={() => setReset({ ...reset, [u.id]: "" })}>Reset…</button> : <span className="row"><input type="password" aria-label={`New password for ${u.email}`} placeholder="new password" value={reset[u.id]} onChange={(e) => setReset({ ...reset, [u.id]: e.target.value })} /><button className="btn" onClick={() => call(() => teamApi.resetPassword(u.id, reset[u.id]).then(() => setReset({ ...reset, [u.id]: undefined })), "Password reset; they were signed out.")}>Set</button></span>}</td></tr>))}</tbody></table></div>}
         <p className="muted small">There must always be at least one active admin; AgentGuard won’t let you remove the last one.</p>
       </Card>
       <Card title="Add a person" sub="Share the password with them securely; they can change it after signing in.">
-        <form className="filters" onSubmit={(e) => { e.preventDefault(); call(() => api("/api/v1/users", { method: "POST", body: JSON.stringify(f) }).then(() => setF({ email: "", name: "", role: "viewer", password: "" })), "Person added."); }}>
+        <form className="filters" onSubmit={(e) => { e.preventDefault(); call(() => teamApi.createUser(f).then(() => setF({ email: "", name: "", role: "viewer", password: "" })), "Person added."); }}>
           <label className="field">Name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
           <label className="field grow">Email<input type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
           <label className="field">Role<select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>{meta.roles.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select></label>
@@ -132,7 +129,7 @@ function Account() {
     e.preventDefault();
     if (f.new_password !== f.confirm) return toast("The new passwords don’t match.", "bad");
     setBusy(true);
-    try { await api("/api/v1/auth/change-password", { method: "POST", body: JSON.stringify({ current_password: f.current_password, new_password: f.new_password }) }); toast("Password changed. Other devices were signed out."); setF({ current_password: "", new_password: "", confirm: "" }); }
+    try { await authApi.changePassword(f.current_password, f.new_password); toast("Password changed. Other devices were signed out."); setF({ current_password: "", new_password: "", confirm: "" }); }
     catch (e2) { toast(e2.message, "bad"); } finally { setBusy(false); }
   }
   return (
@@ -150,16 +147,16 @@ function Account() {
 }
 
 export default function Settings({ params = {} }) {
-  const { can } = useAuth(), s = useApi("/api/v1/settings"), h = useApi("/health");
+  const { can } = useAuth(), s = useApi(paths.settings), h = useApi(paths.health);
   const [tab, setTab] = useState(params.tab ?? "overview");
-  const tabs = [{ key: "overview", label: "Overview" }, { key: "safety", label: "Safety & detection" }, { key: "connect", label: "Connect an agent" }, ...(can("admin") ? [{ key: "team", label: "Team" }] : []), { key: "account", label: "My account" }];
+  const tabs = [{ key: "overview", label: "Overview" }, { key: "safety", label: "Safety & detection" }, { key: "keys", label: "API keys" }, ...(can("admin") ? [{ key: "team", label: "Team" }] : []), { key: "account", label: "My account" }];
   return (
     <div className="stack">
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
       {!s.data ? <State loading={s.loading} error={s.error} h={240} /> : (<>
         {tab === "overview" && <Overview s={s.data} health={h.data} />}
         {tab === "safety" && <Safety s={s.data} reload={s.reload} />}
-        {tab === "connect" && <Connect s={s.data} />}
+        {tab === "keys" && <ApiKeys />}
         {tab === "team" && can("admin") && <Team />}
         {tab === "account" && <Account />}
       </>)}

@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+// Low-level HTTP client. The ONLY place in the frontend that calls fetch().
 const BASE = import.meta.env.VITE_API_URL ?? "";
 const TOKEN_KEY = "agentguard.token";
+
 export const getToken = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } };
 export const setToken = (t) => { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch { /* storage unavailable */ } };
 
@@ -15,25 +16,8 @@ export async function api(path, init = {}) {
   }
   return r.json();
 }
-export function useApi(path) {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(Boolean(path));
-  const load = useCallback(() => {
-    if (!path) { setLoading(false); return; }
-    setLoading(true);
-    api(path).then((d) => { setData(d); setError(null); }).catch((e) => setError(e.message)).finally(() => setLoading(false));
-  }, [path]);
-  useEffect(load, [load]);
-  return { data, error, loading, reload: load };
-}
-const EMPTY_META = { categories: {}, metrics: {}, actions: {}, severities: [], severity_colors: {}, roles: [] };
-export const MetaCtx = createContext(EMPTY_META);
-export const useMeta = () => useContext(MetaCtx);
-export const AuthCtx = createContext({ user: null, can: () => true, logout: () => {}, authRequired: false });
-export const useAuth = () => useContext(AuthCtx);
-export const catLabel = (meta, k) => meta.categories?.[k]?.label ?? String(k).replace(/_/g, " ");
-export const roleLabel = (meta, k) => meta.roles?.find((r) => r.key === k)?.label ?? k;
+
+/** Save text as a file in the browser (used for exports). */
 export function download(name, text, type) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();

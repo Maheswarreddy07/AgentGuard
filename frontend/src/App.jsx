@@ -1,71 +1,49 @@
 import { useCallback, useEffect, useState } from "react";
-import { AuthCtx, MetaCtx, api, getToken, roleLabel, setToken, useApi } from "./api";
+import { AuthCtx, MetaCtx, authApi, getToken, paths, roleLabel, setToken, useApi, usePolling } from "./api";
 import { go, useRoute } from "./router";
-import { ToastProvider, applyTheme, Skeleton } from "./ui";
+import { NAV_GROUPS, findNav } from "./config/navigation";
+import AppSidebar from "./components/AppSidebar";
+import PageHeader from "./components/PageHeader";
+import LoadingState from "./components/LoadingState";
+import { ToastProvider, applyTheme } from "./ui";
 import Login from "./pages/Login";
 import Overview from "./pages/Overview";
+import Agents from "./pages/Agents";
 import Traces from "./pages/Traces";
 import TraceDetail from "./pages/TraceDetail";
-import History from "./pages/History";
+import Problems from "./pages/Problems";
 import Risk from "./pages/Risk";
 import Policies from "./pages/Policies";
 import Approvals from "./pages/Approvals";
+import History from "./pages/History";
 import Bench from "./pages/Bench";
 import Scenarios from "./pages/Scenarios";
+import Integrations from "./pages/Integrations";
 import Settings from "./pages/Settings";
 
-const NAV = [
-  ["/overview", "◉", "Overview", "How healthy your agents are right now"],
-  ["/traces", "☰", "Agent Runs", "Every agent run, and what went wrong in it"],
-  ["/risk", "📈", "Risk Monitor", "Runs that look like they are heading for trouble, and how often the warnings were right"],
-  ["/policies", "🛡", "Policy Center", "The rules agents must follow, checked before every action"],
-  ["/approvals", "✋", "Approvals", "Actions waiting for a person to say yes or no"],
-  ["/history", "🕘", "History", "What happened, who did it, and how results changed over time"],
-  ["/bench", "⚗", "Benchmark Lab", "Test AgentGuard against cases with known answers"],
-  ["/scenarios", "❖", "Scenarios", "The test cases behind the benchmark"],
-  ["/settings", "⚙", "Settings", "Everything you can configure, explained"],
-];
+const PAGES = { "/overview": Overview, "/agents": Agents, "/traces": Traces, "/problems": Problems, "/risk": Risk, "/policies": Policies, "/approvals": Approvals, "/history": History, "/bench": Bench, "/scenarios": Scenarios, "/integrations": Integrations, "/settings": Settings };
 
 function Shell({ user, logout, authRequired }) {
   const { path, params } = useRoute();
-  const meta = useApi("/api/v1/meta"), health = useApi("/health"), pend = useApi("/api/v1/approvals?status=pending&limit=1");
-  useEffect(() => { const t = setInterval(pend.reload, 15000); return () => clearInterval(t); }, [pend.reload]);
+  const meta = useApi(paths.meta), health = useApi(paths.health), pending = useApi(paths.approvals({ status: "pending", limit: 1 }));
+  usePolling(pending.reload, 15000);
   const rank = (r) => (meta.data?.roles ?? []).findIndex((x) => x.key === r);
   const can = useCallback((min) => rank(user.role) >= rank(min), [user.role, meta.data]); // eslint-disable-line
   const section = "/" + (path.split("/")[1] || "overview");
-  const cur = NAV.find((n) => n[0] === section) ?? NAV[0];
-  const ok = health.data?.status === "ok", detail = path.startsWith("/traces/");
-  if (!meta.data) return <div className="boot"><Skeleton h={200} />{meta.error && <div role="alert" className="alert">{meta.error}</div>}</div>;
+  const detail = path.startsWith("/traces/"), nav = findNav(section), Page = PAGES[section] ?? Overview;
+  const apiStatus = health.loading ? "checking" : health.data?.status === "ok" ? "up" : "down";
+  if (!meta.data) return <div className="boot"><LoadingState h={200} error={meta.error} onRetry={meta.reload} /></div>;
   applyTheme(meta.data);
-  let page;
-  if (detail) page = <TraceDetail id={decodeURIComponent(path.slice(8))} />;
-  else if (section === "/traces") page = <Traces params={params} />;
-  else if (section === "/risk") page = <Risk />;
-  else if (section === "/policies") page = <Policies />;
-  else if (section === "/approvals") page = <Approvals />;
-  else if (section === "/history") page = <History params={params} />;
-  else if (section === "/bench") page = <Bench params={params} />;
-  else if (section === "/scenarios") page = <Scenarios />;
-  else if (section === "/settings") page = <Settings params={params} />;
-  else page = <Overview />;
   return (
     <MetaCtx.Provider value={meta.data}>
       <AuthCtx.Provider value={{ user, can, logout, authRequired }}>
         <div className="app">
-          <aside className="side">
-            <div className="brand"><span className="logo">🛡</span> AgentGuard</div>
-            <nav aria-label="Main">{NAV.map(([p, icon, label]) => <button key={p} className={"nav" + (p === section ? " on" : "")} aria-current={p === section ? "page" : undefined} onClick={() => go(p)}><span aria-hidden="true">{icon}</span>{label}{p === "/approvals" && pend.data?.pending > 0 && <span className="nav-b" aria-label={`${pend.data.pending} waiting`}>{pend.data.pending}</span>}</button>)}</nav>
-            <div className="side-foot">
-              <div className="me"><span className="avatar" aria-hidden="true">{(user.name || user.email)[0].toUpperCase()}</span>
-                <div><div className="me-n">{user.name || user.email}</div><div className="muted small">{authRequired ? roleLabel(meta.data, user.role) : "Local mode — sign-in is off"}</div></div></div>
-              {authRequired && <button className="btn" onClick={logout}>Sign out</button>}
-              <div className="status-line"><span className={"dot " + (ok ? "up" : "down")} />{health.loading ? "Checking…" : ok ? "API connected" : "API unreachable"}</div>
-            </div>
-          </aside>
+          <AppSidebar groups={NAV_GROUPS} active={section} onNavigate={(p) => go(p)} user={user} roleName={roleLabel(meta.data, user.role)} authRequired={authRequired} onSignOut={logout}
+            apiStatus={apiStatus} badges={{ "/approvals": pending.data?.pending ?? 0 }} />
           <main>
-            <header className="page-h"><h1>{detail ? "Investigation" : cur[2]}</h1><p>{detail ? "What happened, where it went wrong, and what is safe to do next" : cur[3]}</p></header>
-            {!health.loading && !ok && <div role="alert" className="alert">Can’t reach the backend. Start it with <code>uvicorn app.main:app --port 8000</code> and refresh.</div>}
-            {page}
+            <PageHeader title={detail ? "Investigation" : nav.label} subtitle={detail ? "What happened, where it went wrong, and what is safe to do next" : nav.subtitle} />
+            {apiStatus === "down" && <div role="alert" className="alert">Can’t reach the backend. Start it with <code>uvicorn app.main:app --port 8000</code> and refresh.</div>}
+            {detail ? <TraceDetail id={decodeURIComponent(path.slice(8))} /> : <Page params={params} />}
           </main>
         </div>
       </AuthCtx.Provider>
@@ -78,15 +56,15 @@ export default function App() {
   const start = useCallback(async () => {
     setBoot(true); setFatal(null);
     try {
-      const s = await api("/api/v1/auth/status"); setStatus(s);
+      const s = await authApi.status(); setStatus(s);
       if (!s.auth_required) setUser({ email: "local", name: "Local mode", role: "admin" });
-      else if (getToken()) { try { setUser(await api("/api/v1/auth/me")); } catch { setToken(null); } }
+      else if (getToken()) { try { setUser(await authApi.me()); } catch { setToken(null); } }
     } catch (e) { setFatal(e.message); } finally { setBoot(false); }
   }, []);
   useEffect(() => { start(); }, [start]);
   useEffect(() => { const f = () => { setToken(null); setUser(null); setNotice("Your session ended. Please sign in again."); }; window.addEventListener("ag-unauth", f); return () => window.removeEventListener("ag-unauth", f); }, []);
-  const logout = async () => { try { await api("/api/v1/auth/logout", { method: "POST" }); } catch { /* already signed out */ } setToken(null); setUser(null); setNotice(null); window.location.hash = "/overview"; };
-  if (boot) return <div className="boot"><Skeleton h={160} /></div>;
+  const logout = async () => { try { await authApi.logout(); } catch { /* already signed out */ } setToken(null); setUser(null); setNotice(null); window.location.hash = "/overview"; };
+  if (boot) return <div className="boot"><LoadingState h={160} /></div>;
   if (fatal) return <div className="boot"><div role="alert" className="alert">Can’t reach the backend: {fatal}<br />Start it with <code>uvicorn app.main:app --port 8000</code>, then <button className="linkbtn" onClick={start}>try again</button>.</div></div>;
   return (
     <ToastProvider>

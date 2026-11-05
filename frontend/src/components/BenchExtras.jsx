@@ -1,4 +1,4 @@
-import { catLabel, useMeta } from "../api";
+import { catLabel, useMeta } from "../hooks/context";
 import { Caption, Card, Info, Kpi, pct } from "../ui";
 /** Risk-prediction results and per-split detection quality for one benchmark run. */
 export default function BenchExtras({ m }) {

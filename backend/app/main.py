@@ -17,7 +17,7 @@ from app.api import admin_routes, auth_routes, runtime_routes
 from app.api.deps import Principal, audit, get_db, require, require_agent
 from app.auth import hash_password
 from app.catalog import ACTIONS, CATEGORIES, SEV_RANK, meta
-from app.db.models import ApprovalRow, BenchmarkRow, EventRow, TraceRow, UserRow, WorkspaceRow
+from app.db.models import ApprovalRow, BenchmarkRow, EventRow, FindingRow, TraceRow, UserRow, WorkspaceRow
 from app.db.session import make_engine, make_session_factory
 from app.detectors.rules import run_all
 from app.evaluation.runner import build_events, run_benchmark
@@ -28,6 +28,7 @@ from app.schemas.events import Event, EventType
 from app.services.demo import seed_demo
 from app.services.diagnosis import diagnose, provider_from_env
 from app.services.ingest import backfill_summaries, finding_id, get_trace, ingest, load_events
+finding_id_of = finding_id
 from app.services.retention import purge_older_than
 from app.services.settings import load_config
 
@@ -214,6 +215,23 @@ def create_app(database_url: str | None = None, scenario_dir: Path | None = None
         return events, findings, cfg, {"trace_id": trace_id, "findings": [enrich(f, ws, trace_id) for f in findings], "localization": loc, "ai_diagnosis": None,
                                        "summary": {"status": "flagged" if findings else "clean", "headline": top.explanation if top else "No issues detected by the rules.",
                                                    "max_severity": top.severity.value if top else None, "n_findings": len(findings), "n_events": len(events)}}
+
+    @app.get("/api/v1/findings/{finding_id}")
+    def finding_detail(finding_id: str, p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
+        """One problem in full: what it is, why it matters, the exact events that prove it, and where it started."""
+        row = db.get(FindingRow, finding_id)
+        if row is None or row.workspace_id != p.workspace_id:
+            raise HTTPException(404, "finding not found")
+        ws = p.workspace_id; t = trace_or_404(db, ws, row.trace_id); events = sorted(load_events(db, ws, row.trace_id), key=lambda e: e.step_index)
+        findings, _ = detect(db, ws, events); live = next((f for f in findings if finding_id_of(ws, row.trace_id, f) == finding_id), None)
+        ids = live.evidence_event_ids if live else ([row.event_id] if row.event_id else [])
+        steps = {e.step_index for e in events if e.event_id in set(ids)}
+        c = CATEGORIES.get(row.category, {})
+        return {"id": row.id, "trace_id": row.trace_id, "category": row.category, "label": c.get("label", row.category), "why": c.get("why"), "fix": c.get("fix"), "severity": row.severity, "confidence": row.confidence,
+                "source": row.source, "rule": row.rule, "description": row.description, "evidence": row.evidence, "suggested_action": row.suggested_action, "detected_at": row.detected_at, "evidence_event_ids": ids,
+                "run": brief(t), "localization": localize(events, [live]) if live else None,
+                "evidence_events": [e.model_dump(mode="json") for e in events if e.event_id in set(ids)],
+                "context_events": [e.model_dump(mode="json") for e in events if any(abs(e.step_index - s_) <= 1 for s_ in steps)]}
 
     @app.get("/api/v1/traces/{trace_id}/analysis")
     def analysis(trace_id: str, p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):

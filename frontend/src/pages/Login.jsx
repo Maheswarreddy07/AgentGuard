@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, setToken } from "../api";
+import { authApi, setToken } from "../api";
 
 /** Sign-in screen; in "setup" mode it creates the very first admin account. */
 export default function Login({ mode, status, notice, onAuthed }) {
@@ -14,7 +14,7 @@ export default function Login({ mode, status, notice, onAuthed }) {
     if (setup && f.password.length < min) return setErr(`Use at least ${min} characters.`);
     setBusy(true);
     try {
-      const r = await api(setup ? "/api/v1/auth/setup" : "/api/v1/auth/login", { method: "POST", body: JSON.stringify(setup ? { email: f.email, password: f.password, name: f.name } : { email: f.email, password: f.password }) });
+      const r = setup ? await authApi.setup(f.email, f.password, f.name) : await authApi.login(f.email, f.password);
       setToken(r.token); onAuthed(r.user);
     } catch (e2) { setErr(e2.message); } finally { setBusy(false); }
   }

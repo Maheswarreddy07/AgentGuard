@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { Bar, BarChart, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api, catLabel, useApi, useAuth, useMeta } from "../api";
+import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { catLabel, paths, scenarioApi, useApi, useAuth, useMeta } from "../api";
+import EmptyState from "../components/EmptyState";
 import Flow from "../components/Flow";
-import { BAD, Caption, Card, Chip, Drawer, Empty, GOOD, Kpi, MUTED, MiniStrip, State, chartTip } from "../ui";
+import ScenarioCard from "../components/ScenarioCard";
+import { BAD, Caption, Card, Chip, Drawer, GOOD, Kpi, MUTED, State, chartTip } from "../ui";
 const human = (s) => s.replace(/_/g, " ");
 const clean = (d) => d.replace(/^\[SYNTHETIC[^\]]*\]\s*/, "");
 
 function Detail({ id, onClose }) {
-  const meta = useMeta(), d = useApi(`/api/v1/scenarios/${id}`);
+  const meta = useMeta(), d = useApi(paths.scenario(id));
   const s = d.data, step = s?.labels.earliest_detectable_step, act = s && meta.actions?.[s.labels.expected_action];
   return (
     <Drawer title={id} onClose={onClose}>
@@ -28,10 +30,10 @@ function Detail({ id, onClose }) {
 }
 
 function AddScenario({ onAdded }) {
-  const { can } = useAuth(), tpl = useApi("/api/v1/scenarios/template");
+  const { can } = useAuth(), tpl = useApi(paths.scenarioTemplate);
   const [text, setText] = useState(null), [msg, setMsg] = useState(null);
   const value = text ?? (tpl.data ? JSON.stringify(tpl.data, null, 1) : "");
-  async function add() { try { await api("/api/v1/scenarios", { method: "POST", body: value }); setMsg({ ok: true, t: "Added — it will be included in the next benchmark run." }); onAdded(); } catch (e) { setMsg({ ok: false, t: "Not saved: " + e.message }); } }
+  async function add() { try { await scenarioApi.add(value); setMsg({ ok: true, t: "Added — it will be included in the next benchmark run." }); onAdded(); } catch (e) { setMsg({ ok: false, t: "Not saved: " + e.message }); } }
   return (
     <details className="card"><summary className="card-sum">➕ Add your own scenario</summary>
       <p className="muted">Describe a scripted agent run and the answer you expect. The backend checks it before saving. The template below comes from the server.</p>
@@ -42,9 +44,9 @@ function AddScenario({ onAdded }) {
 }
 
 export default function Scenarios() {
-  const meta = useMeta(), { data, error, loading, reload } = useApi("/api/v1/scenarios");
+  const { data, error, loading, reload } = useApi(paths.scenarios());
   const [cat, setCat] = useState(""), [kind, setKind] = useState("all"), [q, setQ] = useState(""), [open, setOpen] = useState(null);
-  if (!data) return <State loading={loading} error={error} h={240} />;
+  if (!data) return <State loading={loading} error={error} h={240} onRetry={reload} />;
   const items = data.items, quiet = (s) => s.labels.failure_categories.length === 0;
   const fam = {}; items.forEach((s) => { const f = (fam[s.category] ??= { name: human(s.category), key: s.category, quiet: 0, fail: 0 }); quiet(s) ? f.quiet++ : f.fail++; });
   const chart = Object.values(fam).sort((a, b) => b.quiet + b.fail - (a.quiet + a.fail));
@@ -68,7 +70,7 @@ export default function Scenarios() {
         <Card title="Scenarios by kind" sub="Green = should stay quiet, red = contains a failure">
           <div style={{ height: 28 * chart.length + 40 }}><ResponsiveContainer width="100%" height="100%"><BarChart data={chart} layout="vertical" margin={{ left: 6, right: 24 }}>
             <XAxis type="number" allowDecimals={false} stroke={MUTED} fontSize={11} /><YAxis type="category" dataKey="name" width={120} interval={0} stroke={MUTED} fontSize={12} /><Tooltip {...chartTip} /><Legend />
-            <Bar dataKey="quiet" name="Should stay quiet" stackId="a" fill={GOOD} cursor="pointer" onClick={(d) => setCat(d.key)} /><Bar dataKey="fail" name="Contains a failure" stackId="a" fill={BAD} cursor="pointer" onClick={(d) => setCat(d.key)}><LabelList dataKey="fail" position="right" fill="#e8eaf0" fontSize={11} formatter={() => ""} /></Bar></BarChart></ResponsiveContainer></div>
+            <Bar dataKey="quiet" name="Should stay quiet" stackId="a" fill={GOOD} cursor="pointer" onClick={(d) => setCat(d.key)} /><Bar dataKey="fail" name="Contains a failure" stackId="a" fill={BAD} cursor="pointer" onClick={(d) => setCat(d.key)} /></BarChart></ResponsiveContainer></div>
           <Caption>Click a bar to show just that kind below.</Caption>
         </Card>
       </div>
@@ -77,16 +79,7 @@ export default function Scenarios() {
           <div className="seg" role="group" aria-label="Show">{[["all", "All"], ["fail", "Contain failures"], ["quiet", "Should stay quiet"]].map(([k, l]) => <button key={k} aria-pressed={kind === k} className={kind === k ? "on" : ""} onClick={() => setKind(k)}>{l}</button>)}</div></div>
         <div className="chips"><Chip active={!cat} onClick={() => setCat("")}>All kinds</Chip>{chart.map((c) => <Chip key={c.key} active={cat === c.key} onClick={() => setCat(cat === c.key ? "" : c.key)}>{c.name} ({c.quiet + c.fail})</Chip>)}</div>
       </Card>
-      {rows.length === 0 ? <Empty title="No scenarios match" icon="🔍" /> : <div className="scn-grid">{rows.map((s) => {
-        const act = meta.actions?.[s.labels.expected_action];
-        return (
-          <button key={s.id} className={"scn " + (quiet(s) ? "q" : "f")} onClick={() => setOpen(s.id)} aria-label={`Open ${s.id}`}>
-            <span className="scn-top"><span className="tag">{human(s.category)}</span><b className="mono">{s.id}</b></span>
-            <span className="scn-d">{clean(s.description)}</span>
-            <MiniStrip steps={s.preview} mark={s.labels.earliest_detectable_step} />
-            <span className="scn-f">{quiet(s) ? <span className="tag ok">✓ should stay quiet</span> : <span className="tag miss">{s.labels.failure_categories.map((c) => catLabel(meta, c)).slice(0, 2).join(", ")}{s.labels.failure_categories.length > 2 ? ` +${s.labels.failure_categories.length - 2}` : ""}</span>}</span>
-            <span className="scn-r muted small">{act?.icon} {act?.label ?? "—"} · {s.n_events} steps</span>
-          </button>); })}</div>}
+      {rows.length === 0 ? <EmptyState title="No scenarios match" icon="🔍" /> : <div className="scn-grid">{rows.map((s) => <ScenarioCard key={s.id} scenario={s} selected={open === s.id} onOpen={(x) => setOpen(x.id)} />)}</div>}
       <Caption>Each square is one step of the scripted run; the ringed square is where the problem first becomes detectable.</Caption>
       <AddScenario onAdded={reload} />
       {open && <Detail id={open} onClose={() => setOpen(null)} />}

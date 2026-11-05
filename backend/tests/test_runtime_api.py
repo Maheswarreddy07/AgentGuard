@@ -138,6 +138,17 @@ def test_findings_agents_and_run_facts(env):
     other = Run(env, "clean-run", "observe"); other.execute("get", {"id": 1}); other.send("run_end", metadata={"claimed_success": True})
     cmp = c.get("/api/v1/traces/compare?a=facts&b=clean-run", headers=H(env.viewer)).json(); assert cmp["first_divergence_step"] is not None and "tool_execution_failure" in cmp["findings"]["only_a"] and not cmp["same_outcome"]
 
+def test_finding_detail_explains_itself_and_respects_workspaces(env):
+    run = Run(env, "bad", "observe"); run.execute("get", {"id": 1}, ok=False); run.send("run_end", metadata={"claimed_success": True})
+    items = env.c.get("/api/v1/findings?trace_id=bad", headers=H(env.viewer)).json()["items"]; top = items[0]
+    d = env.c.get(f"/api/v1/findings/{top['id']}", headers=H(env.viewer)).json()
+    assert d["label"] and d["why"] and d["fix"] and d["run"]["trace_id"] == "bad" and d["evidence_events"] and d["evidence_event_ids"] and d["localization"]["resolved"]
+    assert {e["event_id"] for e in d["evidence_events"]} <= {e["event_id"] for e in d["context_events"]} and d["source"] == "rule"
+    assert env.c.get("/api/v1/findings/" + "0" * 24, headers=H(env.viewer)).status_code == 404
+    w = env.c.post("/api/v1/workspaces", headers=H(env.admin), json={"name": "Other Corp", "admin_email": "o@o.io", "admin_password": PW}); assert w.status_code == 201
+    other = env.c.post("/api/v1/auth/login", json={"email": "o@o.io", "password": PW}).json()["token"]
+    assert env.c.get(f"/api/v1/findings/{top['id']}", headers=H(other)).status_code == 404       # another workspace cannot read it
+
 def test_overview_has_the_new_operational_metrics_and_filters(env):
     policy(env, "appr", {"type": "tool_denylist", "tools": ["wire"]}, "REQUIRE_APPROVAL", tools=["wire"]); run = Run(env, "ov"); run.check("wire", {}); run.send("run_end", metadata={"claimed_success": False})
     live = env.c.get("/api/v1/metrics/overview", headers=H(env.viewer)).json()["live"]; assert live["pending_approvals"] == 1 and live["total_runs"] == 1 and "avg_risk" in live and "total_cost_usd" in live

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { api, useApi, useAuth, useMeta } from "../api";
+import { paths, runApi, useApi, useAuth, useMeta } from "../api";
+import ProblemDetails from "../components/ProblemDetails";
+import TechnicalDetails from "../components/TechnicalDetails";
 import Flow, { Inspector } from "../components/Flow";
 import { Card, GOOD, Info, Kpi, SevBadge, State, BAD, sevColor } from "../ui";
 
@@ -7,12 +9,12 @@ const OUT = { recovered: ["✅", "Recovered automatically", GOOD], escalated: ["
 
 function Recovery({ id, reload }) {
   const { can } = useAuth();
-  const plan = useApi(`/api/v1/traces/${id}/recovery-plan`);
+  const plan = useApi(paths.recoveryPlan(id));
   const [sim, setSim] = useState({ transient_fail_count: 1, corrected_args_valid: true, evidence_available: true });
   const [res, setRes] = useState(null), [busy, setBusy] = useState(false), [err, setErr] = useState(null);
   async function run() {
     setBusy(true); setErr(null);
-    try { setRes(await api(`/api/v1/traces/${id}/recover`, { method: "POST", body: JSON.stringify({ sim }) })); reload(); } catch (e) { setErr(e.message); } finally { setBusy(false); }
+    try { setRes(await runApi.recover(id, sim)); reload(); } catch (e) { setErr(e.message); } finally { setBusy(false); }
   }
   if (plan.loading || plan.error) return <State loading={plan.loading} error={plan.error} h={90} />;
   const p = plan.data, o = res && OUT[res.outcome.terminal];
@@ -37,7 +39,7 @@ function Recovery({ id, reload }) {
 function AiCard({ id }) {
   const { can } = useAuth();
   const [ai, setAi] = useState(null), [busy, setBusy] = useState(false);
-  async function ask() { setBusy(true); try { setAi((await api(`/api/v1/traces/${id}/analyze`, { method: "POST" })).ai_diagnosis); } catch (e) { setAi({ status: "error", error: e.message }); } finally { setBusy(false); } }
+  async function ask() { setBusy(true); try { setAi((await runApi.analyze(id)).ai_diagnosis); } catch (e) { setAi({ status: "error", error: e.message }); } finally { setBusy(false); } }
   return (
     <Card title="AI second opinion (optional)" hint="A language model reads only the relevant redacted events and offers a hypothesis. It is never treated as proof and never triggers actions.">
       <button className="btn" disabled={busy || !can("member")} onClick={ask}>{busy ? "Asking…" : "Ask the AI to explain"}</button>
@@ -51,7 +53,7 @@ function AiCard({ id }) {
 
 export default function TraceDetail({ id }) {
   const meta = useMeta();
-  const t = useApi(`/api/v1/traces/${encodeURIComponent(id)}`), a = useApi(`/api/v1/traces/${encodeURIComponent(id)}/analysis`);
+  const t = useApi(paths.trace(id)), a = useApi(paths.analysis(id));
   const [sel, setSel] = useState(null);
   if (!t.data || !a.data) return <><a className="back" href="#/traces">← All traces</a><State loading={t.loading || a.loading} error={t.error || a.error} h={300} /></>;
   const events = t.data.events, A = a.data, loc = A.localization;
@@ -89,14 +91,7 @@ export default function TraceDetail({ id }) {
       </Card>
 
       <Card title={`Findings (${A.findings.length})`} hint="Each finding comes from an explicit rule, so it is a proven violation of that rule — not a guess.">
-        {A.findings.length === 0 ? <p className="muted">✅ No rule found a problem in this run.</p> : A.findings.map((f, i) => (
-          <article className="finding" key={i} style={{ "--c": sevColor(f.severity) }}>
-            <div className="row"><b>{f.label}</b><SevBadge sev={f.severity} /><span className="badge">{f.proof === "rule" ? "proven by rule" : "heuristic"}</span></div>
-            <p>{f.explanation}</p>
-            <p className="muted"><b>Why it matters:</b> {f.why}</p>
-            <p className="muted"><b>Suggested fix:</b> {f.fix}</p>
-            <div className="chips"><span className="muted">Evidence:</span>{f.evidence_event_ids.map((eid) => <button key={eid} className="tag btnlike" onClick={() => setSel(eid)}>step {events.find((e) => e.event_id === eid)?.step_index ?? "?"}</button>)}</div>
-          </article>))}
+        {A.findings.length === 0 ? <p className="muted">✅ No rule found a problem in this run.</p> : A.findings.map((f) => <ProblemDetails key={f.id} problem={f} selectedEventId={sel} onSelectEvent={setSel} stepOf={(eid) => events.find((e) => e.event_id === eid)?.step_index} />)}
       </Card>
 
       {events.some((e) => e.event_type === "policy_check") && <Card title="Policy decisions" sub="Each check happened BEFORE the tool was allowed to run">
@@ -106,6 +101,7 @@ export default function TraceDetail({ id }) {
         {events.filter((e) => e.event_type === "risk_detected").map((e) => <article key={e.event_id} className="finding" style={{ "--c": sevColor(e.metadata.level) }}><div className="row"><b>Score {e.metadata.score}</b><SevBadge sev={e.metadata.level} /><span className="badge">predicted, not confirmed</span></div>
           <ul className="plain small">{e.metadata.evidence.map((x, i) => <li key={i}>{x}</li>)}</ul></article>)}</Card>}
 
+      <TechnicalDetails title="Technical details: every recorded event" data={events} />
       <Recovery id={id} reload={reload} />
       <AiCard id={id} />
     </div>

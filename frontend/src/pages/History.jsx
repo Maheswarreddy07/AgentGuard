@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api, useApi, useAuth } from "../api";
+import { historyApi, paths, useApi, useAuth } from "../api";
 import { go } from "../router";
-import { ACCENT, BAD, Caption, Card, Chip, Empty, GOOD, MUTED, State, Tabs, WARN, chartTip, pct, timeAgo, when } from "../ui";
+import ActivityTimeline from "../components/ActivityTimeline";
+import EmptyState from "../components/EmptyState";
+import { ACCENT, BAD, Caption, Card, Chip, GOOD, MUTED, State, Tabs, WARN, chartTip, pct } from "../ui";
 
-const targetLink = (a) => ({ recovery_simulated: (t) => "#/traces/" + t, ai_diagnosis_requested: (t) => "#/traces/" + t, benchmark_started: (t) => "#/bench?run=" + t, scenario_added: () => "#/scenarios" })[a.action]?.(a.target);
-const pretty = (k, v) => `${k.replace(/_/g, " ")}: ${Array.isArray(v) ? v.join("; ") : typeof v === "object" ? JSON.stringify(v) : String(v)}`;
+const targetLink = (a) => ({ recovery_simulated: (t) => "#/traces/" + t, ai_diagnosis_requested: (t) => "#/traces/" + t, benchmark_started: (t) => "#/bench?run=" + t, scenario_added: () => "#/scenarios" })[a.action]?.(a.target) ?? null;
 
 function Timeline({ kind }) {
   const [action, setAction] = useState(""), [items, setItems] = useState([]), [acts, setActs] = useState({}), [total, setTotal] = useState(0), [state, setState] = useState({ loading: true, error: null });
   const load = (offset, replace) => {
     setState({ loading: true, error: null });
-    api(`/api/v1/history/activity?kind=${kind}&limit=20&offset=${offset}${action ? `&action=${action}` : ""}`).then((r) => { setActs(r.actions); setTotal(r.total); setItems((x) => (replace ? r.items : [...x, ...r.items])); setState({ loading: false, error: null }); }).catch((e) => setState({ loading: false, error: e.message }));
+    historyApi.activity({ kind, limit: 20, offset, action }).then((r) => { setActs(r.actions); setTotal(r.total); setItems((x) => (replace ? r.items : [...x, ...r.items])); setState({ loading: false, error: null }); }).catch((e) => setState({ loading: false, error: e.message }));
   };
   useEffect(() => { load(0, true); }, [kind, action]); // eslint-disable-line
   const shown = Object.entries(acts).filter(([, v]) => kind === "all" || v.kind === kind).map(([k, v]) => [k, v.label]);
@@ -19,21 +20,17 @@ function Timeline({ kind }) {
     <div className="stack">
       <div className="chips"><Chip active={!action} onClick={() => setAction("")}>Everything</Chip>{shown.map(([k, l]) => <Chip key={k} active={action === k} onClick={() => setAction(action === k ? "" : k)}>{l}</Chip>)}</div>
       <State loading={state.loading && items.length === 0} error={state.error} h={160} />
-      {!state.loading && items.length === 0 && !state.error && <Empty title="Nothing recorded yet" icon="🕘"><p className="muted">Actions like running a benchmark or simulating a recovery will appear here.</p></Empty>}
-      <ol className="timeline">{items.map((a) => { const link = targetLink(a); return (
-        <li key={a.id} className={"tl " + a.kind}><span className="tl-dot" aria-hidden="true" />
-          <div className="tl-body"><div className="tl-top"><b>{a.label}</b>{a.target && (link ? <a href={link} className="tag">{a.target}</a> : <span className="tag">{a.target}</span>)}<span className="muted small" title={when(a.ts)}>{timeAgo(a.ts)} · by {a.actor}</span></div>
-            {Object.keys(a.detail ?? {}).length > 0 && <div className="muted small">{Object.entries(a.detail).map(([k, v]) => pretty(k, v)).join(" · ")}</div>}</div></li>); })}</ol>
-      {items.length < total && <button className="btn" disabled={state.loading} onClick={() => load(items.length, false)}>Show more ({total - items.length} older)</button>}
+      {!state.loading && items.length === 0 && !state.error && <EmptyState title="Nothing recorded yet" icon="🕘"><p className="muted">Actions like running a benchmark or simulating a recovery will appear here.</p></EmptyState>}
+      <ActivityTimeline items={items} linkFor={targetLink} hasMore={items.length < total} remaining={total - items.length} loading={state.loading} onMore={() => load(items.length, false)} />
     </div>
   );
 }
 
 function BenchHistory() {
-  const h = useApi("/api/v1/history/benchmarks");
-  if (!h.data) return <State loading={h.loading} error={h.error} h={240} />;
+  const h = useApi(paths.benchmarkHistory);
+  if (!h.data) return <State loading={h.loading} error={h.error} h={240} onRetry={h.reload} />;
   const rows = h.data.items.map((r, i) => ({ ...r, n: `#${i + 1}`, label: new Date(r.at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }));
-  if (rows.length === 0) return <Empty title="No benchmark runs yet" icon="⚗"><button className="btn primary" onClick={() => go("/bench")}>Open Benchmark Lab</button></Empty>;
+  if (rows.length === 0) return <EmptyState title="No benchmark runs yet" icon="⚗" action={<button className="btn primary" onClick={() => go("/bench")}>Open Benchmark Lab</button>} />;
   const cfg = (c) => `retries ${c.max_retries ?? "?"} · loop at ${c.retry_loop_threshold ?? "?"}${c.disabled_rules?.length ? ` · rules off: ${c.disabled_rules.join(", ")}` : ""}`;
   return (
     <div className="stack">

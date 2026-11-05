@@ -130,7 +130,7 @@ def system_info(request: Request, p: Principal) -> dict:
     base = os.getenv("PUBLIC_API_URL") or str(request.base_url).rstrip("/")
     snippet = (f'from agentguard import AgentGuard\n\nguard = AgentGuard(api_url="{base}", api_key="YOUR_API_KEY", mode="enforce")   # observe | warn | enforce\n\n'
                '@guard.tool("issue_refund", consequential=True)\ndef issue_refund(order_id, amount): ...\n\n'
-               'with guard.trace(agent_name="support-agent", task="Refund order ORD-101", required_tools=["get_order"]) as run:\n'
+               'with guard.trace(agent_name="AGENT_NAME", task="Refund order ORD-101", required_tools=["get_order"]) as run:\n'
                '    order = run.tools.get_order(order_id="ORD-101")        # every call is checked BEFORE it runs\n'
                '    run.tools.issue_refund(order_id="ORD-101", amount=20)  # may be blocked, or wait for a human approval\n'
                '    run.finish(claimed_success=True)')

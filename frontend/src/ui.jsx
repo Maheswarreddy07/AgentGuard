@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import EmptyState from "./components/EmptyState";
+import LoadingState from "./components/LoadingState";
 export const GOOD = "#3ddc97", BAD = "#ff5d73", WARN = "#ff9f43", MUTED = "#8b93a7", ACCENT = "#6ea8fe";
 export const SEV = {};   // filled from the backend's /meta by applyTheme — never hardcoded here
 export function applyTheme(meta) {
@@ -42,12 +44,11 @@ export function Kpi({ label, value, sub, hint, tone, onClick }) {
 export function Chip({ active, onClick, children, color, onRemove }) {
   return <button type="button" className={"chip" + (active ? " on" : "")} style={color ? { "--c": color } : undefined} aria-pressed={!!active} onClick={onClick}>{children}{onRemove && <span aria-hidden="true"> ×</span>}</button>;
 }
-export function Empty({ title, children, icon = "🗂" }) { return <div className="empty"><div className="empty-i" aria-hidden="true">{icon}</div><div className="empty-t">{title}</div>{children}</div>; }
+export const Empty = EmptyState;
 export function Skeleton({ h = 120 }) { return <div className="skeleton" style={{ height: h }} aria-hidden="true" />; }
-export function State({ loading, error, h }) {
-  if (loading) return <Skeleton h={h} />;
-  if (error) return <div role="alert" className="alert">Something went wrong: {error}</div>;
-  return null;
+export function State({ loading, error, h, onRetry }) {
+  if (!loading && !error) return null;
+  return <LoadingState h={h} error={error} onRetry={onRetry} />;
 }
 export const chartTip = { contentStyle: { background: "#161a22", border: "1px solid #2a3140", borderRadius: 8, color: "#e8eaf0", fontSize: 12 }, cursor: { fill: "rgba(110,168,254,.08)" } };
 

@@ -1,7 +1,7 @@
 # Implementation status
 
 Legend: ✅ built and tested · 🟡 partly built (what is missing is stated) · ❌ not started.
-Test counts at the time of writing: backend 104 · SDK 12 · frontend 17 (all passing). Docker, Postgres and a live deployment were **not** exercised in the build sandbox.
+Test counts at the time of writing: backend 105 · SDK 12 · frontend 37 (all passing). Docker, Postgres and a live deployment were **not** exercised in the build sandbox.
 
 ## Module-by-module against the master prompt
 
@@ -27,11 +27,11 @@ Test counts at the time of writing: backend 104 · SDK 12 · frontend 17 (all pa
 | **9. Regression & replay** | 🟡 | 189 built-in scenarios + custom JSON scenarios, dev/validation/test split ✅. Missing: **trace → scenario conversion, replay, execution comparison, saved regression suites, scenario editing, executable mock-tool scenarios**. |
 | **10. Benchmark lab** | 🟡 | Detection, localization, outcome, recovery, latency, early-warning metrics with CIs and splits ✅. Missing: real baseline vs observe vs enforce runs of an agent, unsafe-recovery rate, policy-violation-prevention rate, report export. |
 | **11. Dashboard** | 🟡 | Real data, empty states ✅. API supports date/agent/environment/severity filters, but the UI exposes only some; no reliability/recovery/policy-violation trend charts beyond runs and flagged runs. |
-| **Pages** (11 required) | 🟡 | Overview ✅ · Agent Runs ✅ · Trace Explorer 🟡 · Failure Investigation 🟡 · Risk Monitor ✅ · Policy Center ✅ · **Recovery Center ❌** (Approvals page covers only approvals) · Scenario Library 🟡 (no edit) · Benchmark Lab ✅ · **Integrations ❌** (Settings → Connect an agent covers key creation and the snippet) · Settings 🟡 (no workspace rename or model-provider form). |
+| **Pages** (11 required) | 🟡 | Overview ✅ · Agent Runs ✅ · Trace Explorer 🟡 · Failure Investigation 🟡 · Risk Monitor ✅ · Safety Rules / Policy Center ✅ · **Recovery Center ❌** (Approvals page covers only approvals) · Scenario Library 🟡 (no edit) · Benchmark Lab ✅ · **Integrations ✅** (4-step wizard that registers the agent, creates a key, fills in the code and confirms the first run; API keys with rotation in Settings) · Settings 🟡 (no workspace rename or model-provider form). Added beyond the list: **Agents** and **Problems** pages. |
 | **Demo environment** — 3 sample agents with mock tools and launch buttons | ❌ | Next. |
 | **Security** — auth, workspace isolation, API-key hashing + rotation, RBAC, redaction, audit, CORS, rate limits, safe errors | ✅ | Workspace isolation is tested with two real tenants. See SECURITY_MODEL.md. |
-| Stack differences from the prompt | — | Frontend is plain JavaScript + React + Vite + Recharts (you asked for JS); no Tailwind, TanStack Query or React Router (a small hash router is used). PostgreSQL is supported but was only run on SQLite here. No Redis (not needed). |
-| **Docs** | 🟡 | Written: this file, SYSTEM_ARCHITECTURE, API_DOCUMENTATION, SDK_GUIDE, FAILURE_DETECTION, RISK_PREDICTION, POLICY_ENGINE, DATABASE_SCHEMA, SECURITY_MODEL, DEPLOYMENT_GUIDE, LIMITATIONS, ROADMAP, evaluation.md. **Not written:** COMPETITIVE_ANALYSIS, PRODUCT_DIFFERENTIATION (both need web research), PRODUCT_OVERVIEW, RECOVERY_ENGINE. |
+| Stack differences from the prompt | — | Frontend is plain JavaScript + React + Vite + Recharts (you asked for JS; a test forbids TypeScript files); no Tailwind, TanStack Query or React Router (a small hash router is used). The API layer is separated from the UI (see FRONTEND_ARCHITECTURE.md). PostgreSQL is supported but was only run on SQLite here. No Redis (not needed). |
+| **Docs** | 🟡 | Written: this file, SYSTEM_ARCHITECTURE, API_DOCUMENTATION, SDK_GUIDE, FAILURE_DETECTION, RISK_PREDICTION, POLICY_ENGINE, DATABASE_SCHEMA, SECURITY_MODEL, DEPLOYMENT_GUIDE, LIMITATIONS, ROADMAP, evaluation.md. FRONTEND_ARCHITECTURE. **Not written:** COMPETITIVE_ANALYSIS, PRODUCT_DIFFERENTIATION (both need web research), PRODUCT_OVERVIEW, RECOVERY_ENGINE. |
 | **Examples folder** (3 agents) | ❌ | With the demo environment. |
 
 ## The 12 end-to-end workflows in the prompt

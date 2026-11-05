@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, catLabel, useApi, useAuth, useMeta } from "../api";
+import { catLabel, demoApi, paths, useApi, useAuth, useMeta } from "../api";
 import { go } from "../router";
 import { Card, Chip, Empty, MiniStrip, State, sevColor, GOOD, timeAgo, Caption } from "../ui";
 const LIMIT = 10;
@@ -11,11 +11,10 @@ export default function Traces({ params }) {
   const [qq, setQq] = useState(p.q);
   useEffect(() => { const t = setTimeout(() => qq !== p.q && set("q", qq), 350); return () => clearTimeout(t); }, [qq]); // eslint-disable-line
   const page = Number(p.page) || 0, keys = ["q", "status", "severity", "category", "agent", "outcome"];
-  const qs = new URLSearchParams({ limit: LIMIT, offset: page * LIMIT, sort: p.sort, ...Object.fromEntries(keys.filter((k) => p[k]).map((k) => [k, p[k]])) }).toString();
-  const list = useApi(`/api/v1/traces?${qs}`), fac = useApi("/api/v1/traces/facets");
+  const list = useApi(paths.traces({ limit: LIMIT, offset: page * LIMIT, sort: p.sort, ...Object.fromEntries(keys.filter((k) => p[k]).map((k) => [k, p[k]])) })), fac = useApi(paths.facets);
   const f = fac.data, active = keys.filter((k) => p[k]);
   const [busy, setBusy] = useState(false);
-  async function seed() { setBusy(true); try { await api("/api/v1/demo/seed", { method: "POST" }); list.reload(); fac.reload(); } finally { setBusy(false); } }
+  async function seed() { setBusy(true); try { await demoApi.seed(); list.reload(); fac.reload(); } finally { setBusy(false); } }
   if (f && f.total === 0) return <Empty title="No traces yet" icon="📭"><p className="muted">Send traces from your agent with the SDK, or explore with synthetic demo data.</p><button className="btn primary" disabled={busy || !can("member")} onClick={seed}>Load demo data</button></Empty>;
   const sevs = [...meta.severities].reverse(), sevTotal = sevs.reduce((n, s) => n + (f?.severity[s] ?? 0), 0);
   const topCats = f ? Object.entries(f.category).sort((a, b) => b[1] - a[1]).slice(0, 5) : [], maxCat = topCats[0]?.[1] || 1;

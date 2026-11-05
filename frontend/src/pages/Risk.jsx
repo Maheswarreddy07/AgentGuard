@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, catLabel, useApi, useMeta } from "../api";
+import { catLabel, paths, useApi, useMeta } from "../api";
 import { Caption, Card, Empty, Info, Kpi, State, SevBadge, pct, timeAgo } from "../ui";
 const OUT = { occurred: ["✓ came true", "var(--good)"], not_occurred: ["✗ did not happen", "var(--bad)"], pending: ["… run still going", "var(--mut)"] };
 
@@ -8,7 +8,7 @@ function Score({ score, level }) {
 }
 
 export default function Risk() {
-  const meta = useMeta(), mon = useApi("/api/v1/risk/monitor"), m = useApi("/api/v1/risk/metrics"), preds = useApi("/api/v1/risk/predictions?limit=30");
+  const meta = useMeta(), mon = useApi(paths.riskMonitor()), m = useApi(paths.riskMetrics), preds = useApi(paths.riskPredictions({ limit: 30 }));
   const [open, setOpen] = useState(null);
   const d = m.data?.definitions ?? {};
   return (
