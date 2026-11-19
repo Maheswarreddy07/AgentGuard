@@ -53,6 +53,16 @@ def backfill_workspace_ids(conn) -> None:
             conn.execute(text(f"update {t} set workspace_id = :w where workspace_id is null"), {"w": ws})
 
 
+def backfill_origin(conn) -> None:
+    """Old rows have no origin. Runs that the demo loader, the sample runner or the starter file created are marked so they stop counting as real activity."""
+    insp = inspect(conn)
+    for table in ("traces", "agents"):
+        if insp.has_table(table) and "origin" in {c["name"] for c in insp.get_columns(table)}:
+            conn.execute(text(f"UPDATE {table} SET origin = 'production' WHERE origin IS NULL"))
+    if insp.has_table("traces") and "origin" in {c["name"] for c in insp.get_columns("traces")}:
+        conn.execute(text("UPDATE traces SET origin = 'sample' WHERE origin = 'production' AND trace_id LIKE 'sample-%'"))
+        conn.execute(text("UPDATE traces SET origin = 'starter' WHERE origin = 'production' AND trace_id LIKE 'starter-%'"))
+
 def add_missing_columns(conn) -> None:
     """Dev/migration convenience: add columns that exist in the models but not yet in the database (all nullable)."""
     insp = inspect(conn)

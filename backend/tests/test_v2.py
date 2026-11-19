@@ -2,17 +2,19 @@ import shutil, sqlite3
 from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
+from tests.conftest import AllDataClient
 from app.main import create_app
 from app.db.session import make_engine
 from tests.test_api import E
 
 ROOT = Path(__file__).resolve().parents[2] / "benchmarks/scenarios"
-N_DEMO = sum(1 for f in (ROOT / "v1").glob("*.json") if f.stem.endswith(("-000", "-001")))   # demo seeding loads the first two of every scenario family
+from app.evaluation.scenario import load_scenarios as _load
+N_DEMO = sum(min(2, n) for n in __import__("collections").Counter(s.category for s in _load(ROOT / "v1")).values())   # demo seeding loads the first two of every scenario family
 
 @pytest.fixture
 def c(tmp_path):
     shutil.copytree(ROOT / "v1", tmp_path / "v1")
-    return TestClient(create_app("sqlite:///:memory:", tmp_path))
+    return AllDataClient(create_app("sqlite:///:memory:", tmp_path))      # these tests look at demo runs on purpose; see test_data_scope.py for the production default
 
 def test_demo_seed_idempotent_and_summaries(c):
     assert c.post("/api/v1/demo/seed").json()["seeded"] == N_DEMO and c.post("/api/v1/demo/seed").json()["seeded"] == 0
@@ -39,12 +41,13 @@ def test_overview_incidents_and_error_shape(c):
 
 def test_analysis_is_enriched_and_plan_does_not_execute(c):
     c.post("/api/v1/demo/seed")
-    a = c.get("/api/v1/traces/unauthorized-000/analysis").json()
+    tid = c.get("/api/v1/traces?category=unauthorized_action").json()["items"][0]["trace_id"]       # which copy of a repeated test survives de-duplication is not part of the contract
+    a = c.get(f"/api/v1/traces/{tid}/analysis").json()
     f = a["findings"][0]
     assert f["label"] == "Action without approval" and f["why"] and f["proof"] == "rule" and a["summary"]["max_severity"] == "critical"
-    p = c.get("/api/v1/traces/unauthorized-000/recovery-plan").json()
+    p = c.get(f"/api/v1/traces/{tid}/recovery-plan").json()
     assert p["action"] == "escalate" and p["executes_anything"] is False
-    assert c.get("/api/v1/traces/unauthorized-000").json()["events"][-1]["event_type"] != "recovery_attempt"  # plan didn't write
+    assert c.get(f"/api/v1/traces/{tid}").json()["events"][-1]["event_type"] != "recovery_attempt"  # plan didn't write
 
 def test_meta_covers_every_category(c):
     from app.schemas.findings import Category
@@ -53,13 +56,16 @@ def test_meta_covers_every_category(c):
 
 def test_compare_and_mistakes_and_scenario_detail(c):
     r1 = c.post("/api/v1/benchmarks/run", json={"seed": 0}).json()["run_id"]
-    r2 = c.post("/api/v1/benchmarks/run", json={"scenario_ids": ["success-000", "invalid_args-000"]}).json()["run_id"]
+    items = c.get("/api/v1/scenarios").json()["items"]; first = lambda cat: next(x["id"] for x in items if x["category"] == cat)
+    small = c.post("/api/v1/benchmarks/run", json={"scenario_ids": [first("success"), first("invalid_args")]}).json()["run_id"]
+    assert c.get(f"/api/v1/benchmark-compare?a={r1}&b={small}").status_code == 409          # different scenarios: not comparable
+    r2 = c.post("/api/v1/benchmarks/run", json={"seed": 1}).json()["run_id"]
     d = c.get(f"/api/v1/benchmark-compare?a={r1}&b={r2}").json()
     assert {x["metric"] for x in d["rows"]} >= {"precision", "safe_outcome"}
     assert c.get(f"/api/v1/benchmarks/{r1}/results?only=mistakes").json()["results"] == []  # v1 only: no mistakes
     m = c.get(f"/api/v1/benchmarks/{r1}").json()["metrics"]
     assert "per_scenario_category" in m and m["per_scenario_category"]["success"]["n"] == 20
-    s = c.get("/api/v1/scenarios/retry_loop-000").json()
+    s = c.get(f"/api/v1/scenarios/{first('retry_loop')}").json()
     assert s["labels"]["expected_action"] == "stop" and len(s["events"]) > 3
     assert c.get("/api/v1/scenarios/zzz").status_code == 404
 

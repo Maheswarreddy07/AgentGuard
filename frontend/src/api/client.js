@@ -1,4 +1,5 @@
 // Low-level HTTP client. The ONLY place in the frontend that calls fetch().
+import { OFFLINE } from "../config/offline";
 const BASE = import.meta.env.VITE_API_URL ?? "";
 const TOKEN_KEY = "agentguard.token";
 
@@ -6,10 +7,10 @@ export const getToken = () => { try { return localStorage.getItem(TOKEN_KEY); } 
 export const setToken = (t) => { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch { /* storage unavailable */ } };
 
 export async function api(path, init = {}) {
-  const token = getToken();
+  const token = getToken();   // every read is production data (the server default); nothing here asks for demo data
   const r = await fetch(BASE + path, { ...init, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(init.headers ?? {}) } });
   if (!r.ok) {
-    let msg = `Request failed (${r.status})`;
+    let msg = OFFLINE.requestFailed.replace("{status}", r.status);
     try { const j = await r.json(); msg = j.error?.message ?? j.detail ?? msg; if (j.error?.details?.length) msg += ": " + j.error.details.map((d) => `${d.where} ${d.problem}`).join("; "); } catch { /* keep default */ }
     if (r.status === 401 && !/\/auth\/(login|setup|status)/.test(path)) window.dispatchEvent(new Event("ag-unauth"));
     const e = new Error(msg); e.status = r.status; throw e;
@@ -21,4 +22,12 @@ export async function api(path, init = {}) {
 export function download(name, text, type) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+}
+
+/** Download a binary file the server sends (e.g. a database backup). */
+export async function downloadFile(path) {
+  const token = getToken(), r = await fetch(BASE + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!r.ok) { let msg = OFFLINE.requestFailed.replace("{status}", r.status); try { const j = await r.json(); msg = j.error?.message ?? msg; } catch { /* not JSON */ } throw new Error(msg); }
+  const name = /filename="?([^";]+)"?/.exec(r.headers.get("content-disposition") ?? "")?.[1] ?? "download", a = document.createElement("a");
+  a.href = URL.createObjectURL(await r.blob()); a.download = name; a.click();
 }

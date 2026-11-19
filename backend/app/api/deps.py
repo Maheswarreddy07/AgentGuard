@@ -54,6 +54,11 @@ def require(min_role: str):
         return p
     return dep
 
+def needs(capability: str):
+    """Guard an endpoint by what the person is trying to do; the role comes from the catalog, the same list the UI reads."""
+    from app.catalog import min_role_for
+    return require(min_role_for(capability))
+
 def require_agent(p: Principal = Depends(principal)) -> Principal:
     """Endpoints a running agent needs: sending events, asking for a runtime decision, polling an approval, reporting a recovery."""
     if p.role == "agent" or RANK[p.role] >= RANK["member"]:

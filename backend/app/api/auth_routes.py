@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from app.api.deps import Principal, aware, audit, bearer, get_db, principal
+from app.catalog import UI
 from app.auth import EMAIL_RE, burn_time, hash_password, min_password_length, new_session_token, password_problem, sha, verify_password
 from app.db.models import SessionRow, UserRow, WorkspaceRow
 
@@ -36,7 +37,7 @@ def open_session(db: Session, request: Request, u: UserRow) -> dict:
 def status(request: Request, db: Session = Depends(get_db)):
     n = db.scalar(select(func.count()).select_from(UserRow))
     return {"auth_required": request.app.state.auth_required, "setup_required": request.app.state.auth_required and n == 0,
-            "session_hours": session_hours(), "min_password_length": min_password_length()}
+            "session_hours": session_hours(), "min_password_length": min_password_length(), "ui": {"login": UI["login"], "shell": UI["shell"]}}
 
 @router.post("/setup", status_code=201)
 def setup(body: Setup, request: Request, db: Session = Depends(get_db)):

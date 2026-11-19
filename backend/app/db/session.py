@@ -3,10 +3,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.db.models import Base
-from app.db.upgrade import add_missing_columns, backfill_workspace_ids, upgrade_to_workspaces
+from app.db.url import database_url
+from app.db.upgrade import add_missing_columns, backfill_origin, backfill_workspace_ids, upgrade_to_workspaces
 
 def make_engine(url: str | None = None):
-    url = url or os.getenv("DATABASE_URL", "sqlite:///./agentguard.db")
+    url = url or database_url()
     kw = {}
     if url.startswith("sqlite"):
         kw["connect_args"] = {"check_same_thread": False}
@@ -20,6 +21,7 @@ def make_engine(url: str | None = None):
         with eng.begin() as conn:
             add_missing_columns(conn)
             backfill_workspace_ids(conn)
+            backfill_origin(conn)
     return eng
 
 def make_session_factory(engine):

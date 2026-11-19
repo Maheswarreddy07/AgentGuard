@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 from app.catalog import SEV_RANK
+from app.services.scope import integration_of, origin_of, stronger_integration
 from app.db.models import AgentRow, EventRow, FindingRow, RiskPredictionRow, TraceRow
 from app.detectors.rules import run_all
 from app.detectors.scanners import annotate_event
@@ -14,18 +15,20 @@ from app.services.settings import load_config
 def get_trace(db: Session, ws: int, trace_id: str) -> TraceRow | None:
     return db.get(TraceRow, (ws, trace_id))
 
-def ingest(db: Session, ws: int, trace_id: str, events: list[Event]) -> dict:
+def ingest(db: Session, ws: int, trace_id: str, events: list[Event], origin: str | None = None) -> dict:
     """Idempotent per (workspace, trace, event). Out-of-order arrival is fine; reads sort by step."""
     for e in events:
         if e.trace_id != trace_id:
             raise ValueError(f"event {e.event_id} has trace_id {e.trace_id!r}, expected {trace_id!r}")
     trace = get_trace(db, ws, trace_id)
     if trace is None and events:
-        trace = TraceRow(workspace_id=ws, trace_id=trace_id, agent_name=events[0].agent_name); db.add(trace)
+        trace = TraceRow(workspace_id=ws, trace_id=trace_id, agent_name=events[0].agent_name, origin=origin_of(events, origin)); db.add(trace)
     if events:
         ag = db.scalar(select(AgentRow).where(AgentRow.workspace_id == ws, AgentRow.name == events[0].agent_name))
-        if ag is None: ag = AgentRow(workspace_id=ws, name=events[0].agent_name); db.add(ag)
+        if ag is None: ag = AgentRow(workspace_id=ws, name=events[0].agent_name, origin=(trace.origin if trace else "production")); db.add(ag)
+        elif trace is not None and (trace.origin or "production") == "production": ag.origin = "production"      # a real run makes it a real agent
         ag.last_seen_at = datetime.now(timezone.utc)
+        ag.integration = stronger_integration(ag.integration, integration_of(events, trace.origin if trace else "production"))
     existing = set(db.scalars(select(EventRow.event_id).where(EventRow.workspace_id == ws, EventRow.trace_id == trace_id)))
     accepted = dup = 0
     for e in events:
@@ -51,9 +54,12 @@ def refresh_summary(db: Session, ws: int, trace_id: str) -> None:
     t = get_trace(db, ws, trace_id); evs = sorted(load_events(db, ws, trace_id), key=lambda e: e.step_index); cfg = load_config(db, ws)
     fs = run_all(evs, cfg.disabled_rules, cfg.retry_loop_threshold, cfg.duplicate_call_threshold)
     step_of = {e.event_id: e.step_index for e in evs}
+    kept = {r.id: (r.resolved_at, r.resolved_by, r.resolution_note) for r in db.scalars(select(FindingRow).where(FindingRow.workspace_id == ws, FindingRow.trace_id == trace_id)) if r.resolved_at}   # a problem someone resolved stays resolved
     db.execute(delete(FindingRow).where(FindingRow.workspace_id == ws, FindingRow.trace_id == trace_id))
     for f in fs:
-        db.add(FindingRow(id=finding_id(ws, trace_id, f), workspace_id=ws, trace_id=trace_id, event_id=f.detectable_event_id or (f.evidence_event_ids[0] if f.evidence_event_ids else None),
+        fid = finding_id(ws, trace_id, f); was = kept.get(fid, (None, None, None))
+        db.add(FindingRow(id=fid, resolved_at=was[0], resolved_by=was[1], resolution_note=was[2],
+                          workspace_id=ws, trace_id=trace_id, event_id=f.detectable_event_id or (f.evidence_event_ids[0] if f.evidence_event_ids else None),
                           category=f.category.value, severity=f.severity.value, confidence=f.confidence, source="rule" if f.deterministic else "heuristic", rule=f.rule,
                           description=f.explanation, evidence=f.evidence, suggested_action=f.recommended_action))
     start = next((e for e in evs if e.event_type == EventType.RUN_START), None); end = next((e for e in evs if e.event_type == EventType.RUN_END), None)

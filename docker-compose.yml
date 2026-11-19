@@ -1,21 +1,25 @@
 services:
   db:
     image: postgres:16
-    environment: {POSTGRES_USER: agentguard, POSTGRES_PASSWORD: change-me, POSTGRES_DB: agentguard}
+    environment: {POSTGRES_USER: agentguard, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}", POSTGRES_DB: agentguard}
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck: {test: ["CMD-SHELL", "pg_isready -U agentguard"], interval: 5s, retries: 10}
   backend:
     build: {context: ., dockerfile: backend/Dockerfile}
     environment:
-      DATABASE_URL: postgresql+psycopg://agentguard:change-me@db:5432/agentguard
-      CORS_ORIGINS: http://localhost:8080
+      DB_HOST: db                 # the app builds the connection from these parts, so the password may contain any character
+      DB_USER: agentguard
+      DB_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
+      DB_NAME: agentguard
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:${WEB_PORT:-8080}}
+      AUTH_REQUIRED: "1"
       RETENTION_DAYS: "0"
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     depends_on: {db: {condition: service_healthy}}
-    ports: ["8000:8000"]
+    expose: ["8000"]        # reachable only through the web container, so client addresses and rate limits cannot be spoofed
   frontend:
     build: {context: ., dockerfile: frontend/Dockerfile}
     depends_on: [backend]
-    ports: ["8080:80"]
+    ports: ["${WEB_PORT:-8080}:80"]      # port busy on your machine? set WEB_PORT=8090 in .env
 volumes: {pgdata: {}}

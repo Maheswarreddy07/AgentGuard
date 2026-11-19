@@ -24,7 +24,7 @@ test("components are presentational: they never import the API layer", () => {
 });
 
 test("every required reusable component exists", () => {
-  const need = ["AppSidebar", "PageHeader", "HealthSummary", "AgentCard", "AgentTable", "ProblemCard", "ProblemDetails", "ActivityTimeline", "SafetyRuleCard", "ApprovalCard", "ScenarioCard", "BenchmarkComparison", "EmptyState", "LoadingState", "TechnicalDetails", "IntegrationWizard"];
+  const need = ["TopNav", "PageHeader", "HealthSummary", "AgentCard", "ProblemCard", "ProblemDetails", "ActivityTimeline", "SafetyRuleCard", "ApprovalCard", "TestCard", "BenchmarkComparison", "EmptyState", "LoadingState", "TechnicalDetails", "IntegrationWizard"];
   const have = readdirSync(join(SRC, "components")).map((f) => f.replace(".jsx", ""));
   expect(need.filter((n) => !have.includes(n))).toEqual([]);
 });

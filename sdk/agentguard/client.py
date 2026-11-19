@@ -12,6 +12,7 @@
 import contextvars, logging, time, uuid
 from datetime import datetime, timezone
 from typing import Any, Callable
+from agentguard.recovery import Failure, RecoveryExecutor, ToolSpec, _etype
 from agentguard.errors import AgentGuardError, AgentGuardUnavailable, ApprovalRejected, ApprovalTimeout, ToolCallBlocked
 from agentguard.transport import HttpTransport
 
@@ -60,7 +61,7 @@ class Run:
                  required_tools: list | None = None, must_precede: list | None = None, constraints: list | None = None, budget: dict | None = None, metadata: dict | None = None):
         self.guard, self.agent_name, self.task, self.actor_role = guard, agent_name, task, actor_role
         self.trace_id = trace_id or f"run-{uuid.uuid4().hex[:12]}"
-        self._start_meta = {"task": task, "mode": guard.mode, "environment": environment, **({"required_tools": required_tools} if required_tools else {}), **({"must_precede": must_precede} if must_precede else {}),
+        self._start_meta = {"sdk": "agentguard-python", "task": task, "mode": guard.mode, "environment": environment, **({"required_tools": required_tools} if required_tools else {}), **({"must_precede": must_precede} if must_precede else {}),
                             **({"constraints": constraints} if constraints else {}), **({"budget": budget} if budget else {}), **(metadata or {})}
         self.step, self._buf, self._created, self._started, self._finished, self._token, self._last_tool = 0, [], False, False, False, None, None
         self.tools = ToolBox(self)
@@ -120,6 +121,19 @@ class Run:
         except Exception as e:
             self._emit("tool_result", tool_name=name, status="error", error_type=type(e).__name__, metadata={"error": str(e)[:200]}); raise
         self._emit("tool_result", tool_name=name, tool_output=out, status="ok"); return out
+
+    def call_tool_with_recovery(self, name: str, *, verify=None, executor: RecoveryExecutor | None = None, **kwargs):
+        """Call a tool; if it fails, try the safe recovery. A policy block or a refused approval is a decision, never a failure to recover from.
+        Returns the result when the original goal is confirmed by verify(result); otherwise re-raises the original error (its .recovery holds the report)."""
+        try: return self.call_tool(name, **kwargs)
+        except (ToolCallBlocked, ApprovalRejected, ApprovalTimeout): raise
+        except Exception as first:
+            tool = self.guard._tools[name]
+            report = (executor or RecoveryExecutor()).recover(ToolSpec(name, tool.read_only, tool.consequential, tool.arg_schema), kwargs, lambda **kw: self.call_tool(name, **kw), Failure(_etype(first), str(first)[:200]), verify)
+            self._emit("recovery_attempt", tool_name=name, metadata={"simulated": False, "action": report.action, "attempts": report.attempts, "reason": report.reason})
+            self._emit("recovery_completed", tool_name=name, metadata={"simulated": False, "action": report.action, "terminal": report.terminal, "recovered": report.recovered, "verified": report.verified, "attempts": report.attempts, "reason": report.reason})
+            if report.recovered: return report.result
+            first.recovery = report; raise
 
     def _check(self, tool: _Tool, kwargs: dict, approval_id: int | None) -> dict:
         self.flush(strict=self.guard.fail_mode == "closed")

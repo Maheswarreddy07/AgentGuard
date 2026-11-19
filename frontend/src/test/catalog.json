@@ -1,0 +1,2229 @@
+{
+ "access": {
+  "viewer": {
+   "role": "viewer",
+   "home": "/overview",
+   "sections": [
+    {
+     "key": "home",
+     "label": "Home",
+     "tabs": [
+      {
+       "path": "/overview",
+       "icon": "◉",
+       "label": "Home",
+       "subtitle": "Is everything working? See how your agents are doing."
+      }
+     ]
+    },
+    {
+     "key": "agents",
+     "label": "Agents",
+     "tabs": [
+      {
+       "path": "/agents",
+       "icon": "🤖",
+       "label": "Your agents",
+       "subtitle": "The agents AgentGuard is watching, and how each one is doing"
+      }
+     ]
+    },
+    {
+     "key": "activity",
+     "label": "Activity",
+     "tabs": [
+      {
+       "path": "/activity",
+       "icon": "🕒",
+       "label": "Timeline",
+       "subtitle": "What your agents have been doing, as it happened"
+      },
+      {
+       "path": "/traces",
+       "icon": "☰",
+       "label": "Runs",
+       "subtitle": "What your agents have done, task by task"
+      },
+      {
+       "path": "/history",
+       "icon": "🕘",
+       "label": "Log",
+       "subtitle": "What happened, who did it, and how results changed over time"
+      }
+     ]
+    },
+    {
+     "key": "problems",
+     "label": "Problems",
+     "tabs": [
+      {
+       "path": "/problems",
+       "icon": "⚠",
+       "label": "Problems",
+       "subtitle": "What went wrong, why it matters, and what to do next"
+      },
+      {
+       "path": "/risk",
+       "icon": "📈",
+       "label": "Early warnings",
+       "subtitle": "Runs that look like they are heading for trouble"
+      }
+     ]
+    },
+    {
+     "key": "safety",
+     "label": "Safety",
+     "tabs": [
+      {
+       "path": "/policies",
+       "icon": "🛡",
+       "label": "Rules",
+       "subtitle": "The rules agents must follow, checked before every action"
+      },
+      {
+       "path": "/approvals",
+       "icon": "✋",
+       "label": "Approvals",
+       "subtitle": "Actions waiting for a person to say yes or no"
+      }
+     ]
+    },
+    {
+     "key": "test",
+     "label": "Test & Improve",
+     "tabs": [
+      {
+       "path": "/scenarios",
+       "icon": "❖",
+       "label": "Test Library",
+       "subtitle": "The situations AgentGuard can be tested against, in plain language"
+      },
+      {
+       "path": "/run-tests",
+       "icon": "▶",
+       "label": "Run Tests",
+       "subtitle": "Choose tests, check what will happen, and run them"
+      },
+      {
+       "path": "/results",
+       "icon": "✔",
+       "label": "Results",
+       "subtitle": "Is AgentGuard making agents safer? What every test run found"
+      }
+     ]
+    }
+   ],
+   "profile": [
+    {
+     "path": "/settings",
+     "icon": "⚙",
+     "label": "Settings",
+     "subtitle": "Everything you can configure, explained"
+    }
+   ],
+   "pages": [
+    "/overview",
+    "/agents",
+    "/activity",
+    "/traces",
+    "/history",
+    "/problems",
+    "/risk",
+    "/policies",
+    "/approvals",
+    "/scenarios",
+    "/run-tests",
+    "/results",
+    "/settings"
+   ],
+   "capabilities": {
+    "decide_approvals": false,
+    "connect_agents": false,
+    "load_demo": false,
+    "run_benchmark": false,
+    "add_scenario": false,
+    "delete_data": false,
+    "delete_scenario": false,
+    "view_database": false,
+    "resolve_problems": false,
+    "run_sample_agent": false,
+    "run_recovery": false,
+    "ask_ai_diagnosis": false,
+    "edit_policies": false,
+    "manage_team": false,
+    "manage_keys": false,
+    "change_settings": false,
+    "manage_workspaces": false,
+    "view_security_log": false
+   },
+   "capability_info": {
+    "decide_approvals": {
+     "min_role": "member",
+     "label": "Approve or reject agent actions",
+     "needs": "Member"
+    },
+    "connect_agents": {
+     "min_role": "member",
+     "label": "Connect a new agent",
+     "needs": "Member"
+    },
+    "load_demo": {
+     "min_role": "member",
+     "label": "Load demo data",
+     "needs": "Member"
+    },
+    "run_benchmark": {
+     "min_role": "member",
+     "label": "Run the benchmark",
+     "needs": "Member"
+    },
+    "add_scenario": {
+     "min_role": "member",
+     "label": "Add your own practice situation",
+     "needs": "Member"
+    },
+    "delete_data": {
+     "min_role": "admin",
+     "label": "Delete runs, agents and sample data",
+     "needs": "Admin"
+    },
+    "delete_scenario": {
+     "min_role": "member",
+     "label": "Delete your own practice situations",
+     "needs": "Member"
+    },
+    "view_database": {
+     "min_role": "admin",
+     "label": "See the database status and download a backup",
+     "needs": "Admin"
+    },
+    "resolve_problems": {
+     "min_role": "member",
+     "label": "Mark problems as resolved",
+     "needs": "Member"
+    },
+    "run_sample_agent": {
+     "min_role": "member",
+     "label": "Run a sample agent to see AgentGuard work",
+     "needs": "Member"
+    },
+    "run_recovery": {
+     "min_role": "member",
+     "label": "Simulate a safe recovery",
+     "needs": "Member"
+    },
+    "ask_ai_diagnosis": {
+     "min_role": "member",
+     "label": "Ask the AI to explain a run",
+     "needs": "Member"
+    },
+    "edit_policies": {
+     "min_role": "admin",
+     "label": "Create and change safety rules",
+     "needs": "Admin"
+    },
+    "manage_team": {
+     "min_role": "admin",
+     "label": "Add people and change their roles",
+     "needs": "Admin"
+    },
+    "manage_keys": {
+     "min_role": "admin",
+     "label": "Create and revoke API keys",
+     "needs": "Admin"
+    },
+    "change_settings": {
+     "min_role": "admin",
+     "label": "Change settings and clean up old data",
+     "needs": "Admin"
+    },
+    "manage_workspaces": {
+     "min_role": "admin",
+     "label": "Create workspaces",
+     "needs": "Admin"
+    },
+    "view_security_log": {
+     "min_role": "admin",
+     "label": "See the security log",
+     "needs": "Admin"
+    }
+   }
+  },
+  "member": {
+   "role": "member",
+   "home": "/overview",
+   "sections": [
+    {
+     "key": "home",
+     "label": "Home",
+     "tabs": [
+      {
+       "path": "/overview",
+       "icon": "◉",
+       "label": "Home",
+       "subtitle": "Is everything working? See how your agents are doing."
+      }
+     ]
+    },
+    {
+     "key": "agents",
+     "label": "Agents",
+     "tabs": [
+      {
+       "path": "/agents",
+       "icon": "🤖",
+       "label": "Your agents",
+       "subtitle": "The agents AgentGuard is watching, and how each one is doing"
+      },
+      {
+       "path": "/integrations",
+       "icon": "🔌",
+       "label": "Connect an agent",
+       "subtitle": "Connect an agent in a few guided steps"
+      }
+     ]
+    },
+    {
+     "key": "activity",
+     "label": "Activity",
+     "tabs": [
+      {
+       "path": "/activity",
+       "icon": "🕒",
+       "label": "Timeline",
+       "subtitle": "What your agents have been doing, as it happened"
+      },
+      {
+       "path": "/traces",
+       "icon": "☰",
+       "label": "Runs",
+       "subtitle": "What your agents have done, task by task"
+      },
+      {
+       "path": "/history",
+       "icon": "🕘",
+       "label": "Log",
+       "subtitle": "What happened, who did it, and how results changed over time"
+      }
+     ]
+    },
+    {
+     "key": "problems",
+     "label": "Problems",
+     "tabs": [
+      {
+       "path": "/problems",
+       "icon": "⚠",
+       "label": "Problems",
+       "subtitle": "What went wrong, why it matters, and what to do next"
+      },
+      {
+       "path": "/risk",
+       "icon": "📈",
+       "label": "Early warnings",
+       "subtitle": "Runs that look like they are heading for trouble"
+      }
+     ]
+    },
+    {
+     "key": "safety",
+     "label": "Safety",
+     "tabs": [
+      {
+       "path": "/policies",
+       "icon": "🛡",
+       "label": "Rules",
+       "subtitle": "The rules agents must follow, checked before every action"
+      },
+      {
+       "path": "/approvals",
+       "icon": "✋",
+       "label": "Approvals",
+       "subtitle": "Actions waiting for a person to say yes or no"
+      }
+     ]
+    },
+    {
+     "key": "test",
+     "label": "Test & Improve",
+     "tabs": [
+      {
+       "path": "/scenarios",
+       "icon": "❖",
+       "label": "Test Library",
+       "subtitle": "The situations AgentGuard can be tested against, in plain language"
+      },
+      {
+       "path": "/run-tests",
+       "icon": "▶",
+       "label": "Run Tests",
+       "subtitle": "Choose tests, check what will happen, and run them"
+      },
+      {
+       "path": "/results",
+       "icon": "✔",
+       "label": "Results",
+       "subtitle": "Is AgentGuard making agents safer? What every test run found"
+      }
+     ]
+    }
+   ],
+   "profile": [
+    {
+     "path": "/settings",
+     "icon": "⚙",
+     "label": "Settings",
+     "subtitle": "Everything you can configure, explained"
+    }
+   ],
+   "pages": [
+    "/overview",
+    "/agents",
+    "/integrations",
+    "/activity",
+    "/traces",
+    "/history",
+    "/problems",
+    "/risk",
+    "/policies",
+    "/approvals",
+    "/scenarios",
+    "/run-tests",
+    "/results",
+    "/settings"
+   ],
+   "capabilities": {
+    "decide_approvals": true,
+    "connect_agents": true,
+    "load_demo": true,
+    "run_benchmark": true,
+    "add_scenario": true,
+    "delete_data": false,
+    "delete_scenario": true,
+    "view_database": false,
+    "resolve_problems": true,
+    "run_sample_agent": true,
+    "run_recovery": true,
+    "ask_ai_diagnosis": true,
+    "edit_policies": false,
+    "manage_team": false,
+    "manage_keys": false,
+    "change_settings": false,
+    "manage_workspaces": false,
+    "view_security_log": false
+   },
+   "capability_info": {
+    "decide_approvals": {
+     "min_role": "member",
+     "label": "Approve or reject agent actions",
+     "needs": "Member"
+    },
+    "connect_agents": {
+     "min_role": "member",
+     "label": "Connect a new agent",
+     "needs": "Member"
+    },
+    "load_demo": {
+     "min_role": "member",
+     "label": "Load demo data",
+     "needs": "Member"
+    },
+    "run_benchmark": {
+     "min_role": "member",
+     "label": "Run the benchmark",
+     "needs": "Member"
+    },
+    "add_scenario": {
+     "min_role": "member",
+     "label": "Add your own practice situation",
+     "needs": "Member"
+    },
+    "delete_data": {
+     "min_role": "admin",
+     "label": "Delete runs, agents and sample data",
+     "needs": "Admin"
+    },
+    "delete_scenario": {
+     "min_role": "member",
+     "label": "Delete your own practice situations",
+     "needs": "Member"
+    },
+    "view_database": {
+     "min_role": "admin",
+     "label": "See the database status and download a backup",
+     "needs": "Admin"
+    },
+    "resolve_problems": {
+     "min_role": "member",
+     "label": "Mark problems as resolved",
+     "needs": "Member"
+    },
+    "run_sample_agent": {
+     "min_role": "member",
+     "label": "Run a sample agent to see AgentGuard work",
+     "needs": "Member"
+    },
+    "run_recovery": {
+     "min_role": "member",
+     "label": "Simulate a safe recovery",
+     "needs": "Member"
+    },
+    "ask_ai_diagnosis": {
+     "min_role": "member",
+     "label": "Ask the AI to explain a run",
+     "needs": "Member"
+    },
+    "edit_policies": {
+     "min_role": "admin",
+     "label": "Create and change safety rules",
+     "needs": "Admin"
+    },
+    "manage_team": {
+     "min_role": "admin",
+     "label": "Add people and change their roles",
+     "needs": "Admin"
+    },
+    "manage_keys": {
+     "min_role": "admin",
+     "label": "Create and revoke API keys",
+     "needs": "Admin"
+    },
+    "change_settings": {
+     "min_role": "admin",
+     "label": "Change settings and clean up old data",
+     "needs": "Admin"
+    },
+    "manage_workspaces": {
+     "min_role": "admin",
+     "label": "Create workspaces",
+     "needs": "Admin"
+    },
+    "view_security_log": {
+     "min_role": "admin",
+     "label": "See the security log",
+     "needs": "Admin"
+    }
+   }
+  },
+  "admin": {
+   "role": "admin",
+   "home": "/overview",
+   "sections": [
+    {
+     "key": "home",
+     "label": "Home",
+     "tabs": [
+      {
+       "path": "/overview",
+       "icon": "◉",
+       "label": "Home",
+       "subtitle": "Is everything working? See how your agents are doing."
+      }
+     ]
+    },
+    {
+     "key": "agents",
+     "label": "Agents",
+     "tabs": [
+      {
+       "path": "/agents",
+       "icon": "🤖",
+       "label": "Your agents",
+       "subtitle": "The agents AgentGuard is watching, and how each one is doing"
+      },
+      {
+       "path": "/integrations",
+       "icon": "🔌",
+       "label": "Connect an agent",
+       "subtitle": "Connect an agent in a few guided steps"
+      }
+     ]
+    },
+    {
+     "key": "activity",
+     "label": "Activity",
+     "tabs": [
+      {
+       "path": "/activity",
+       "icon": "🕒",
+       "label": "Timeline",
+       "subtitle": "What your agents have been doing, as it happened"
+      },
+      {
+       "path": "/traces",
+       "icon": "☰",
+       "label": "Runs",
+       "subtitle": "What your agents have done, task by task"
+      },
+      {
+       "path": "/history",
+       "icon": "🕘",
+       "label": "Log",
+       "subtitle": "What happened, who did it, and how results changed over time"
+      }
+     ]
+    },
+    {
+     "key": "problems",
+     "label": "Problems",
+     "tabs": [
+      {
+       "path": "/problems",
+       "icon": "⚠",
+       "label": "Problems",
+       "subtitle": "What went wrong, why it matters, and what to do next"
+      },
+      {
+       "path": "/risk",
+       "icon": "📈",
+       "label": "Early warnings",
+       "subtitle": "Runs that look like they are heading for trouble"
+      }
+     ]
+    },
+    {
+     "key": "safety",
+     "label": "Safety",
+     "tabs": [
+      {
+       "path": "/policies",
+       "icon": "🛡",
+       "label": "Rules",
+       "subtitle": "The rules agents must follow, checked before every action"
+      },
+      {
+       "path": "/approvals",
+       "icon": "✋",
+       "label": "Approvals",
+       "subtitle": "Actions waiting for a person to say yes or no"
+      }
+     ]
+    },
+    {
+     "key": "test",
+     "label": "Test & Improve",
+     "tabs": [
+      {
+       "path": "/scenarios",
+       "icon": "❖",
+       "label": "Test Library",
+       "subtitle": "The situations AgentGuard can be tested against, in plain language"
+      },
+      {
+       "path": "/run-tests",
+       "icon": "▶",
+       "label": "Run Tests",
+       "subtitle": "Choose tests, check what will happen, and run them"
+      },
+      {
+       "path": "/results",
+       "icon": "✔",
+       "label": "Results",
+       "subtitle": "Is AgentGuard making agents safer? What every test run found"
+      }
+     ]
+    }
+   ],
+   "profile": [
+    {
+     "path": "/admin",
+     "icon": "🛠",
+     "label": "Team management",
+     "subtitle": "People, API keys, the database and security at a glance"
+    },
+    {
+     "path": "/settings",
+     "icon": "⚙",
+     "label": "Settings",
+     "subtitle": "Everything you can configure, explained"
+    }
+   ],
+   "pages": [
+    "/overview",
+    "/agents",
+    "/integrations",
+    "/activity",
+    "/traces",
+    "/history",
+    "/problems",
+    "/risk",
+    "/policies",
+    "/approvals",
+    "/scenarios",
+    "/run-tests",
+    "/results",
+    "/admin",
+    "/settings"
+   ],
+   "capabilities": {
+    "decide_approvals": true,
+    "connect_agents": true,
+    "load_demo": true,
+    "run_benchmark": true,
+    "add_scenario": true,
+    "delete_data": true,
+    "delete_scenario": true,
+    "view_database": true,
+    "resolve_problems": true,
+    "run_sample_agent": true,
+    "run_recovery": true,
+    "ask_ai_diagnosis": true,
+    "edit_policies": true,
+    "manage_team": true,
+    "manage_keys": true,
+    "change_settings": true,
+    "manage_workspaces": true,
+    "view_security_log": true
+   },
+   "capability_info": {
+    "decide_approvals": {
+     "min_role": "member",
+     "label": "Approve or reject agent actions",
+     "needs": "Member"
+    },
+    "connect_agents": {
+     "min_role": "member",
+     "label": "Connect a new agent",
+     "needs": "Member"
+    },
+    "load_demo": {
+     "min_role": "member",
+     "label": "Load demo data",
+     "needs": "Member"
+    },
+    "run_benchmark": {
+     "min_role": "member",
+     "label": "Run the benchmark",
+     "needs": "Member"
+    },
+    "add_scenario": {
+     "min_role": "member",
+     "label": "Add your own practice situation",
+     "needs": "Member"
+    },
+    "delete_data": {
+     "min_role": "admin",
+     "label": "Delete runs, agents and sample data",
+     "needs": "Admin"
+    },
+    "delete_scenario": {
+     "min_role": "member",
+     "label": "Delete your own practice situations",
+     "needs": "Member"
+    },
+    "view_database": {
+     "min_role": "admin",
+     "label": "See the database status and download a backup",
+     "needs": "Admin"
+    },
+    "resolve_problems": {
+     "min_role": "member",
+     "label": "Mark problems as resolved",
+     "needs": "Member"
+    },
+    "run_sample_agent": {
+     "min_role": "member",
+     "label": "Run a sample agent to see AgentGuard work",
+     "needs": "Member"
+    },
+    "run_recovery": {
+     "min_role": "member",
+     "label": "Simulate a safe recovery",
+     "needs": "Member"
+    },
+    "ask_ai_diagnosis": {
+     "min_role": "member",
+     "label": "Ask the AI to explain a run",
+     "needs": "Member"
+    },
+    "edit_policies": {
+     "min_role": "admin",
+     "label": "Create and change safety rules",
+     "needs": "Admin"
+    },
+    "manage_team": {
+     "min_role": "admin",
+     "label": "Add people and change their roles",
+     "needs": "Admin"
+    },
+    "manage_keys": {
+     "min_role": "admin",
+     "label": "Create and revoke API keys",
+     "needs": "Admin"
+    },
+    "change_settings": {
+     "min_role": "admin",
+     "label": "Change settings and clean up old data",
+     "needs": "Admin"
+    },
+    "manage_workspaces": {
+     "min_role": "admin",
+     "label": "Create workspaces",
+     "needs": "Admin"
+    },
+    "view_security_log": {
+     "min_role": "admin",
+     "label": "See the security log",
+     "needs": "Admin"
+    }
+   }
+  }
+ },
+ "ui": {
+  "access": {
+   "denied_title": "This page is not part of your role",
+   "denied_body": "You are signed in as {role}. This page needs the {needed} role.",
+   "denied_action": "Go to my home page",
+   "locked": "Needs the {needed} role",
+   "read_only": "You can look but not change anything. Ask a member or admin."
+  },
+  "login": {
+   "setup_title": "Welcome to AgentGuard",
+   "setup_body": "First-time setup: create the administrator account. You will use it to invite your team and manage settings.",
+   "login_title": "Sign in",
+   "login_body": "Use your AgentGuard account to continue.",
+   "name": "Your name",
+   "name_placeholder": "Ada Lovelace",
+   "email": "Email",
+   "password": "Password",
+   "confirm": "Confirm password",
+   "show": "Show",
+   "hide": "Hide",
+   "session_ended": "Your session ended. Please sign in again.",
+   "mismatch": "The two passwords don’t match.",
+   "too_short": "Use at least {n} characters.",
+   "pw_hint": "At least {n} characters. Passwords are stored as salted hashes, never in plain text.",
+   "wait": "Please wait…",
+   "create": "Create admin account",
+   "submit": "Sign in"
+  },
+  "delete": {
+   "button": "Delete",
+   "cancel": "Keep it",
+   "confirm": "Yes, delete",
+   "working": "Deleting…",
+   "failed": "Could not delete: {why}",
+   "permanent": "This cannot be undone.",
+   "done": "Deleted.",
+   "run": {
+    "title": "Delete this run?",
+    "body": "“{name}” and everything found in it will be removed."
+   },
+   "agent": {
+    "title": "Delete the agent “{name}”?",
+    "body": "It is removed from AgentGuard together with its {n} runs. Your real agent is not touched and can connect again later."
+   },
+   "agent_empty": {
+    "title": "Delete the agent “{name}”?",
+    "body": "It has no runs. It is removed from the list."
+   },
+   "scenario": {
+    "title": "Delete “{name}”?",
+    "body": "This practice situation will no longer be used in benchmarks."
+   },
+   "rule": {
+    "title": "Delete the safety rule “{name}”?",
+    "body": "Agents will no longer be checked against it. Past decisions stay in the log."
+   },
+   "user": {
+    "title": "Delete {name}?",
+    "body": "This person can no longer sign in. Their past actions stay in the log."
+   },
+   "key": {
+    "title": "Delete the key “{name}” for good?",
+    "body": "It is already switched off. This removes it from the list."
+   },
+   "demo": {
+    "title": "Remove all demo and sample data?",
+    "body": "Runs created by “Load demo data”, “Try a sample agent” and the starter file are deleted. Real agent runs are not touched.",
+    "button": "Remove demo and sample data",
+    "done": "Removed {n} runs."
+   }
+  },
+  "common": {
+   "technical_toggle": "Show technical details",
+   "load_more": "Loading more…",
+   "end": "That is everything.",
+   "see_all_agents": "See all agents →"
+  },
+  "risk": {
+   "intro": "These runs look like they are heading for trouble. Start with the first one.",
+   "empty_title": "Nothing looks risky",
+   "empty_body": "No run is above the warning level right now.",
+   "suggested": "Suggested next step:",
+   "look": "Look into it",
+   "why_show": "Why does it look risky?",
+   "why_hide": "Hide the reasons",
+   "summary_some": "{pct} of the serious warnings so far turned out to be right.",
+   "summary_none": "Not enough warnings yet to say how reliable they are.",
+   "reliability_show": "How reliable are the warnings?",
+   "reliability_hide": "Hide",
+   "rule_based": "This is a transparent, rule-based score, not a trained model. Early numbers rest on few runs, so treat them with care.",
+   "kpi_right": "Warnings that came true",
+   "kpi_right_sub": "{resolved} checked · {pending} still pending",
+   "kpi_first": "Failures warned about first",
+   "kpi_first_sub": "{n} failures",
+   "kpi_lead": "Average head start",
+   "kpi_lead_unit": "steps",
+   "kpi_lead_none": "n/a",
+   "kpi_false": "Needless alarms",
+   "kpi_false_sub": "of {n} serious warnings",
+   "history_title": "Warning history",
+   "history_sub": "Every warning, and whether it turned out to be right",
+   "history_empty": "Nothing recorded yet.",
+   "cols": {
+    "score": "Score",
+    "problem": "Predicted problem",
+    "run": "Run",
+    "step": "Step",
+    "confidence": "Confidence",
+    "result": "What happened"
+   },
+   "outcome": {
+    "occurred": "✓ came true",
+    "not_occurred": "✗ did not happen",
+    "pending": "… run still going"
+   },
+   "built": "How this score was built",
+   "score_label": "Risk {score} of 100",
+   "level_score": "score {score}"
+  },
+  "trace": {
+   "title": "Investigation",
+   "sub": "What happened, where it went wrong, and what is safe to do next"
+  },
+  "shell": {
+   "menu_open": "Open menu",
+   "menu_close": "Close menu",
+   "menu_title": "Menu",
+   "sign_out": "Sign out",
+   "local_mode": "Local mode: sign-in is off",
+   "api_up": "Server connected",
+   "api_down": "Server not reachable",
+   "api_checking": "Checking…",
+   "nav_label": "Main",
+   "subnav_label": "Pages in this section",
+   "profile_label": "Account menu",
+   "my_account": "My account",
+   "connection_settings": "Connection settings",
+   "theme_label": "Colour theme",
+   "theme": {
+    "system": "Match my device",
+    "light": "Light",
+    "dark": "Dark"
+   },
+   "skip": "Skip to content",
+   "copy": "Copy",
+   "copied": "Copied ✓",
+   "error_prefix": "Something went wrong:",
+   "loading": "Loading…",
+   "retry": "Try again",
+   "backend_down": "Can’t reach the server. Check that it is running, then refresh this page.",
+   "waiting": "{n} waiting",
+   "error_title": "Something went wrong on this page",
+   "error_body": "Nothing was lost. Try again. If it keeps happening, tell your administrator.",
+   "error_details": "Technical details",
+   "brand": "AgentGuard"
+  },
+  "overview": {
+   "welcome_title": "No activity yet. Connect an agent and send its first task.",
+   "welcome_steps": [
+    "Try a sample agent. It takes one click and needs no setup.",
+    "Or connect your own agent. We will guide you step by step.",
+    "Come back here to see how healthy your agents are."
+   ],
+   "welcome_try": "Try a sample agent",
+   "welcome_connect": "Connect my own agent",
+   "welcome_demo": "Load demo data",
+   "demo_loading": "Loading…",
+   "demo_locked": "Ask a member or admin to get started.",
+   "bands": [
+    {
+     "min_healthy": 0.8,
+     "tone": "good",
+     "text": "Your agents look healthy."
+    },
+    {
+     "min_healthy": 0.5,
+     "tone": "warn",
+     "text": "Some runs need attention."
+    },
+    {
+     "min_healthy": 0,
+     "tone": "bad",
+     "text": "Many runs have problems. Start with the most serious ones below."
+    }
+   ],
+   "tile_health": {
+    "label": "Healthy runs",
+    "sub": "{n} of {total} runs had no problems",
+    "hint": "A run is healthy when none of AgentGuard’s checks found a problem in it."
+   },
+   "tile_attention": {
+    "label": "Needs attention",
+    "sub": "serious problems to look at",
+    "hint": "Runs with a high or critical problem."
+   },
+   "tile_approvals": {
+    "label": "Waiting for you",
+    "sub": "actions paused until you decide",
+    "hint": "An agent wanted to do something it is not allowed to do alone. It waits for a person to say yes or no."
+   },
+   "tile_stopped": {
+    "label": "Stopped for safety",
+    "sub": "risky actions blocked",
+    "hint": "Actions a safety rule stopped before they could run."
+   },
+   "tile_agents": {
+    "label": "Connected agents",
+    "sub": "{n} registered",
+    "hint": "Agents that have sent at least one real run to AgentGuard."
+   },
+   "tile_tasks": {
+    "label": "Tasks completed",
+    "sub": "of {total} recorded",
+    "hint": "Runs that finished successfully. Demo and sample runs are never counted."
+   },
+   "tile_problems": {
+    "label": "Problems needing attention",
+    "sub": "high or critical",
+    "hint": "Runs with a serious problem that nobody has resolved."
+   },
+   "tile_waiting": {
+    "label": "Waiting for approval",
+    "sub": "actions on hold",
+    "hint": "An agent wants to do something it is not allowed to do alone. It waits for a person to say yes or no."
+   },
+   "health_title": "Agent health",
+   "health_sub": "How each agent is doing",
+   "health_empty": "Your agents haven’t been connected yet.",
+   "health_all": "See all agents",
+   "activity_title": "Recent activity",
+   "activity_sub": "The latest tasks your agents worked on",
+   "activity_empty": "No activity yet. Connect an agent and send its first task.",
+   "activity_all": "See all activity",
+   "outcome": {
+    "succeeded": "Completed",
+    "failed": "Failed",
+    "blocked": "Stopped by a safety rule",
+    "running": "Running",
+    "unknown": "Unknown"
+   },
+   "problem_flag": "{n} problem(s)",
+   "no_problem_flag": "No problems",
+   "next_title": "Suggested next steps",
+   "next_sub": "Based on what has been recorded so far",
+   "suggestions": {
+    "connect_first_agent": {
+     "text": "Connect your first agent so AgentGuard can start watching it.",
+     "cta": "Connect an agent"
+    },
+    "send_first_task": {
+     "text": "Your agent is registered. Send its first task so AgentGuard can start checking it.",
+     "cta": "See how"
+    },
+    "review_approvals": {
+     "text": "{n} action(s) are waiting for a person to decide.",
+     "cta": "Review approvals"
+    },
+    "review_problems": {
+     "text": "{n} run(s) have a serious problem.",
+     "cta": "Look at the problems"
+    },
+    "create_safety_rule": {
+     "text": "No safety rules are switched on yet, so nothing is being blocked. Add a rule to protect sensitive actions.",
+     "cta": "Add a safety rule"
+    },
+    "run_reliability_test": {
+     "text": "Run your first reliability test to see how your agent performs.",
+     "cta": "Run a test"
+    },
+    "all_good": {
+     "text": "Nothing needs your attention right now.",
+     "cta": "Look at recent activity"
+    }
+   },
+   "fix_title": "Fix these first",
+   "fix_sub": "The most serious problems, newest first",
+   "fix_empty": "Nothing urgent right now.",
+   "fix_open": "Look into it",
+   "fix_all": "See all problems",
+   "more_show": "Show the full report",
+   "more_hide": "Hide the full report",
+   "more_note": "Charts and extra numbers for people who want the detail."
+  },
+  "connect": {
+   "intro": "Choose how you want to start. You do not need to write any code to try AgentGuard.",
+   "choices": [
+    {
+     "key": "try",
+     "icon": "▶",
+     "title": "Try it now",
+     "body": "Run a pretend agent right here and watch AgentGuard react. Nothing to install.",
+     "button": "Start"
+    },
+    {
+     "key": "mine",
+     "icon": "🧩",
+     "title": "Connect my own agent",
+     "body": "A guided path: get a key, download one small file, run it, and see your agent appear.",
+     "button": "Start guide"
+    },
+    {
+     "key": "dev",
+     "icon": "👩‍💻",
+     "title": "Ask a developer",
+     "body": "Copy a ready-made message with everything a developer needs to connect a real agent.",
+     "button": "Get the message"
+    }
+   ],
+   "back": "← Back to the choices",
+   "back_step": "← Back",
+   "next": "Continue →",
+   "agent_label": "Agent name",
+   "agent_hint": "A short name, for example support-agent. It appears on every run and report.",
+   "agent_placeholder": "support-agent",
+   "agent_default": "my-first-agent",
+   "try": {
+    "title": "Try a sample agent",
+    "intro": "Pick a situation. AgentGuard will play it as if a real agent had just done it, and show what it noticed.",
+    "run": "Run this sample",
+    "running": "Running…",
+    "found": "AgentGuard noticed {n} problem(s): {headline}",
+    "clean": "AgentGuard checked the run and found nothing wrong, as it should.",
+    "see": "See exactly what happened",
+    "again": "Try another sample",
+    "note": "Samples are simulated by AgentGuard and are clearly marked as samples. They are kept apart from your real activity and never change your numbers.",
+    "view_demo": "View it in demo data",
+    "locked": "Only members and admins can run samples."
+   },
+   "mine": {
+    "title": "Connect my own agent",
+    "steps": [
+     {
+      "key": "name",
+      "title": "Name it",
+      "body": "Give your agent a short name.",
+      "button": "Register this agent",
+      "done": "“{name}” is registered."
+     },
+     {
+      "key": "key",
+      "title": "Get a key",
+      "body": "A key is like a password that lets your agent send its runs to AgentGuard. It cannot read your data.",
+      "button": "Create my key",
+      "once": "Copy this key now. It is shown only once.",
+      "locked": "Only admins can create keys. Ask an admin to create one for you, then paste it below.",
+      "paste_label": "Paste the key here",
+      "paste_placeholder": "ag_…"
+     },
+     {
+      "key": "file",
+      "title": "Download the file",
+      "body": "This small file already contains your agent’s name and key. It sends one sample run so you can check the connection.",
+      "button": "Download my file",
+      "need_key": "Create or paste a key first."
+     },
+     {
+      "key": "run",
+      "title": "Run it",
+      "body": "You only need Python on your computer, once.",
+      "python_title": "Step 1. Install Python (only once)",
+      "python_body": "Go to python.org/downloads, download Python and open the installer. On the first screen, tick “Add python.exe to PATH”, then press Install.",
+      "open_title": "Step 2. Open a terminal where the file is",
+      "open_windows": "Windows: open the folder with the downloaded file, click the address bar at the top, type  powershell  and press Enter.",
+      "open_mac": "Mac: open Terminal, type  cd Downloads  and press Enter.",
+      "run_title": "Step 3. Run the file",
+      "run_body": "Type this and press Enter:",
+      "expect": "You should see “Done. AgentGuard received the sample run”. Then press the button below.",
+      "next": "I ran it. Check the connection.",
+      "trouble_title": "If something goes wrong",
+      "trouble": [
+       {
+        "q": "It says “python is not recognized”",
+        "a": "Python is not installed or was installed without “Add to PATH”. Run the installer again and tick that box."
+       },
+       {
+        "q": "It says “Could not reach AgentGuard”",
+        "a": "The AgentGuard server must be running and reachable from this computer. Ask whoever set it up."
+       },
+       {
+        "q": "It says error 401",
+        "a": "The key is wrong or was revoked. Go back and create a new key."
+       }
+      ]
+     },
+     {
+      "key": "check",
+      "title": "Check",
+      "waiting": "Waiting for the first run from “{name}”…",
+      "waiting_hint": "This page checks by itself every few seconds.",
+      "ok": "Connected. “{name}” has sent {n} run(s). (A test run does not count as real activity.)",
+      "see": "See its runs",
+      "again": "Check again",
+      "next_title": "What next?",
+      "next_body": "That file sent a sample. To connect your real agent, ask a developer: they can use the message from “Ask a developer”.",
+      "dev": "Get the message for a developer"
+     }
+    ]
+   },
+   "dev": {
+    "title": "A message for your developer",
+    "intro": "Copy this and send it. It has everything needed to connect a real agent. The key is added if you created one.",
+    "copy": "Copy the message",
+    "key_missing": "(create a key first, or ask an admin)",
+    "template": "Hi! Please connect our agent “{agent}” to AgentGuard.\n\n1. Install the SDK:\n{install}\n\n2. Add this to the agent’s code:\n{snippet}\n\nServer address: {server}\nAPI key: {key}\n\nMark tools that move money, delete data or send messages as consequential, so AgentGuard can protect them. Docs: docs/SDK_GUIDE.md"
+   },
+   "agents_title": "Your agents",
+   "agents_sub": "Everything already connected",
+   "agents_empty": "No agents yet.",
+   "keys_link": "Manage API keys →"
+  },
+  "activity": {
+   "intro": "What your agents have been doing, newest first.",
+   "filters": {
+    "all": "All activity",
+    "successful": "Successful tasks",
+    "problems": "Problems",
+    "blocked": "Blocked actions",
+    "approvals": "Pending approvals"
+   },
+   "filter_empty": "Nothing here matches this filter in the activity loaded so far. Load earlier activity to look further back.",
+   "empty": "No activity yet. Connect an agent and send its first task.",
+   "today": "Today",
+   "yesterday": "Yesterday",
+   "earlier_day": "Earlier",
+   "details": "Details",
+   "earlier": "Show earlier activity",
+   "end": "That is all the recorded activity.",
+   "icons": {
+    "task_started": "▶",
+    "task_completed": "✅",
+    "task_failed": "❌",
+    "problem_detected": "⚠",
+    "action_blocked": "⛔",
+    "approval_requested": "✋",
+    "approval_decided": "🗳",
+    "recovery_attempted": "🔄",
+    "recovery_completed": "🩹"
+   },
+   "kinds": {
+    "task_started": "{agent} started a task",
+    "task_completed": "{agent} finished a task",
+    "task_failed": "{agent}’s task did not succeed",
+    "problem_detected": "Problem found: {category}",
+    "action_blocked": "{agent}’s action “{tool}” was blocked",
+    "approval_requested": "{agent} asked for approval to use “{tool}”",
+    "approval_decided": "Approval for “{tool}” was {status} by {by}",
+    "recovery_attempted": "AgentGuard tried to recover {agent}’s run",
+    "recovery_completed": "Recovery {result}"
+   },
+   "status": {
+    "approved": "approved",
+    "rejected": "rejected",
+    "changes_requested": "sent back for changes",
+    "expired": "left to expire"
+   },
+   "recovery_ok": "worked",
+   "recovery_failed": "did not work",
+   "resolved": "resolved",
+   "rule": "Rule: {rule}"
+  },
+  "problems": {
+   "make_test": "Turn into a test",
+   "test_title": "Make a test from this problem",
+   "test_intro": "This saves a copy of the run as a test, so you can check that AgentGuard keeps catching it. All text is removed first; check what is kept below.",
+   "test_kept": "Kept",
+   "test_removed": "Removed",
+   "test_catches": "The test expects AgentGuard to catch:",
+   "test_not_preserved": "Cannot be tested from the copy (it depended on removed text): {list}",
+   "test_none": "Nothing in this run can be tested once its text is removed.",
+   "test_confirm": "I reviewed what the test keeps and removes",
+   "test_save": "Save test",
+   "test_saved": "Saved. Find it under Test Library → Your own tests.",
+   "test_failed": "Could not save the test: {why}",
+   "test_steps": "{n} steps",
+   "occurrences": "Happened {n} times in this run",
+   "intro": "Everything AgentGuard found, most serious first. Each problem explains what happened and what to do about it.",
+   "tabs": {
+    "critical": "Critical",
+    "warning": "Warnings",
+    "resolved": "Resolved"
+   },
+   "empty_none": "No problems have been detected in the recorded executions.",
+   "empty_group": {
+    "critical": "Nothing critical right now.",
+    "warning": "No warnings.",
+    "resolved": "Nothing has been marked as resolved yet."
+   },
+   "q": {
+    "what": "What happened?",
+    "why": "Why does it matter?",
+    "agent": "Which agent was affected?",
+    "did": "What did AgentGuard do?",
+    "next": "What should you do next?"
+   },
+   "did": {
+    "blocked": "It stopped the action “{tool}” before it ran (rule: {rule}).",
+    "approval": "It held the action “{tool}” until a person approved it (rule: {rule}).",
+    "recovery": "It tried to recover the run automatically.",
+    "warned": "It warned about “{tool}” but let it continue (rule: {rule}).",
+    "recorded": "It recorded the problem. No safety rule was set to stop it."
+   },
+   "confirmed": "Confirmed",
+   "possible": "Possible risk",
+   "confirmed_hint": "A rule checked this and it is a fact.",
+   "possible_hint": "A pattern that usually means trouble. It could not be proven.",
+   "evidence_show": "Show the evidence",
+   "evidence_hide": "Hide the evidence",
+   "open_run": "See the whole run",
+   "resolve": "Mark as resolved",
+   "reopen": "Reopen",
+   "note_label": "What did you do? (optional)",
+   "note_placeholder": "For example: fixed the tool, added a safety rule",
+   "save": "Save",
+   "cancel": "Cancel",
+   "resolved_by": "Resolved by {who} {when}",
+   "event_label": "Step: {id}",
+   "rule_label": "Rule: {rule}",
+   "agent_filter": "Showing problems for {agent}",
+   "clear_filter": "Show all agents"
+  },
+  "safety": {
+   "applies": "Applies to",
+   "all_agents": "All agents",
+   "only_these": "Only these agents",
+   "none_registered": "No agents are connected yet, so this rule will apply to every agent.",
+   "extra_label": "Another agent name",
+   "extra_placeholder": "Agent name",
+   "add": "Add",
+   "scope_help": "Choose which agents this rule protects."
+  },
+  "agents": {
+   "cols": {
+    "agent": "Agent",
+    "health": "Health",
+    "runs": "Runs",
+    "flagged": "Flagged",
+    "blocked": "Blocked actions",
+    "risk": "Average risk",
+    "env": "Environment",
+    "seen": "Last seen"
+   },
+   "never": "never",
+   "health": {
+    "none": "No runs yet",
+    "ok": "Healthy",
+    "some": "Some problems",
+    "attention": "Needs attention"
+   },
+   "stats": {
+    "runs": "runs",
+    "flagged": "flagged",
+    "blocked": "blocked",
+    "risk": "risk"
+   },
+   "last_seen": "last seen {when}",
+   "never_seen": "never seen",
+   "open_label": "Open runs of {name}",
+   "empty_title": "Your agents haven’t been connected yet.",
+   "empty_body": "An agent appears here the first time it sends a run.",
+   "empty_cta": "Connect your first agent",
+   "count_one": "1 agent",
+   "count_many": "{n} agents",
+   "sub": "Click an agent to see its runs",
+   "view_cards": "Cards",
+   "view_table": "Table",
+   "connect": "＋ Connect an agent",
+   "integration_label": "Connected through",
+   "integration": {
+    "sdk": "Python SDK",
+    "api": "Direct API",
+    "starter_file": "Starter file (test only)",
+    "sample": "Sample runs (simulated)",
+    "none": "Not connected yet"
+   },
+   "connection": {
+    "connected": {
+     "label": "Connected",
+     "hint": "Sent a real run in the last {days} days."
+    },
+    "quiet": {
+     "label": "Quiet",
+     "hint": "Nothing received for {days} days or more."
+    },
+    "test_only": {
+     "label": "Test run only",
+     "hint": "Only the connection test has arrived. No real task yet."
+    },
+    "waiting": {
+     "label": "Waiting for the first run",
+     "hint": "Registered, but nothing has been received."
+    }
+   },
+   "recent": "Recent activity",
+   "recent_none": "No activity yet.",
+   "problems_open": "{n} open problem(s)",
+   "problems_none": "No open problems",
+   "serious": "{n} serious"
+  },
+  "scenarios": {
+   "title": "Practice situations",
+   "sub": "Made-up agent runs we use to check that AgentGuard works",
+   "intro": "Each card is one pretend situation. Some contain a real problem AgentGuard should catch. Others are perfectly normal, and AgentGuard should not raise an alarm. We score it on both, so it catches problems without crying wolf.",
+   "note": "Click any card to see what happened, step by step. All of these are synthetic (made up for testing), not real customer data.",
+   "technical_toggle": "Show technical details",
+   "tabs": [
+    {
+     "key": "fail",
+     "label": "Problems to catch",
+     "show": "problem"
+    },
+    {
+     "key": "quiet",
+     "label": "Normal runs",
+     "show": "normal"
+    },
+    {
+     "key": "all",
+     "label": "Everything",
+     "show": "all"
+    }
+   ],
+   "search_label": "Search",
+   "search_placeholder": "Type a word, e.g. refund or retry",
+   "problem_filter_label": "Type of problem",
+   "problem_filter_any": "Any problem",
+   "empty": "Nothing matches",
+   "no_problem_headline": "Nothing wrong here",
+   "more_problems": "+{n} more",
+   "should_quiet": "AgentGuard should stay quiet. No alarm expected.",
+   "should_do": "AgentGuard should:",
+   "strip_caption": "Each square is one step of the scripted run; red means a problem happened there and the ringed square is where it first becomes detectable.",
+   "drawer": {
+    "reference": "Reference",
+    "steps": "What happened, step by step",
+    "first_detectable": "First detectable",
+    "find": "What AgentGuard should find",
+    "find_nothing": "Nothing. This run is fine, so AgentGuard should stay quiet. Raising an alarm here counts as a false alarm.",
+    "do": "What AgentGuard should do about it",
+    "sim": "Test settings",
+    "sim_note": "only used when testing automatic recovery",
+    "sim_retries": "Failing retries before success",
+    "sim_args": "Corrected arguments valid",
+    "sim_evidence": "Extra evidence available",
+    "yes": "yes",
+    "no": "no",
+    "hidden": "The expected answer above is hidden from the detectors during a benchmark; it is only used to grade them."
+   },
+   "add": {
+    "summary": "Add your own scenario",
+    "help": "Describe a scripted agent run and the answer you expect. The backend checks it before saving. The template below comes from the server.",
+    "json_label": "Scenario JSON",
+    "button": "Validate and add",
+    "members_only": "Members and admins only",
+    "ok": "Added. It will be included in the next benchmark run.",
+    "fail": "Not saved: "
+   }
+  },
+  "admin": {
+   "intro": "The state of your workspace and who can do what.",
+   "kpi_people": "People",
+   "kpi_people_sub": "{n} active",
+   "kpi_keys": "API keys",
+   "kpi_keys_sub": "{n} in use",
+   "kpi_rules": "Safety rules",
+   "kpi_rules_sub": "{n} switched on",
+   "kpi_retention": "Keep runs for",
+   "kpi_retention_sub": "days",
+   "security_title": "Recent security events",
+   "security_sub": "Sign-ins, setting and rule changes",
+   "security_empty": "No security events yet.",
+   "security_cta": "Open the full log",
+   "shortcuts_title": "Manage",
+   "shortcut_team": "People and roles",
+   "shortcut_keys": "API keys",
+   "shortcut_settings": "Settings",
+   "shortcut_rules": "Safety rules",
+   "roles_title": "What each role can do",
+   "db_title": "Database",
+   "db_sub": "Where AgentGuard keeps everything",
+   "db_engine": "Type",
+   "db_schema": "Schema version",
+   "db_size": "Size",
+   "db_counts": "What is stored",
+   "db_backup": "Download a backup",
+   "db_backup_note": "A consistent copy of the database file, safe to take while AgentGuard is running. Keep it somewhere private: it contains your data.",
+   "db_no_backup": "Automatic backup is only available for SQLite. For PostgreSQL, use pg_dump (see docs/DEPLOYMENT.md).",
+   "db_backup_done": "Backup downloaded.",
+   "db_unknown": "not recorded",
+   "counts": {
+    "agents": "Agents",
+    "runs": "Runs",
+    "events": "Steps recorded",
+    "findings": "Problems found",
+    "policies": "Safety rules",
+    "approvals": "Approvals",
+    "users": "People",
+    "api_keys": "API keys",
+    "audit_entries": "Log entries"
+   },
+   "tidy_title": "Tidy up",
+   "tidy_sub": "Remove what you no longer need",
+   "cleanup": "Delete runs older than the keep-for setting",
+   "cleanup_done": "Removed {n} old runs.",
+   "roles_sub": "Changing a role takes effect the next time the person loads a page"
+  },
+  "tests": {
+   "library": {
+    "intro": "Each test describes a situation an agent can get into and what AgentGuard should do about it. Run one to see how AgentGuard handles it.",
+    "search": "Search tests",
+    "search_placeholder": "Type a word, e.g. refund, approval or retry",
+    "empty": "No tests match your search.",
+    "none_title": "No tests are available yet.",
+    "cases": "{n} situations",
+    "cases_one": "1 situation",
+    "checks_label": "What it checks",
+    "expected_label": "Safe behaviour",
+    "last_label": "Last result",
+    "not_tested": "Not tested",
+    "passed": "Passed",
+    "failed": "Failed",
+    "partly": "{passed} of {total} passed",
+    "run": "Run test",
+    "run_group": "Run all in this group",
+    "combined": "Also involves: {list}",
+    "tested_on": "Tested {when}",
+    "custom_note": "Created by your team",
+    "custom_title": "Your own tests",
+    "custom_sub": "Tests your team added. They are kept separate from the built-in library.",
+    "add_title": "Add your own test",
+    "synthetic_note": "Built-in tests are scripted, synthetic situations. They show how AgentGuard reacts; they are not recordings of your real agents."
+   },
+   "groups": {
+    "normal": {
+     "label": "Normal tasks",
+     "sub": "Everyday work that should go through without any warning."
+    },
+    "incorrect": {
+     "label": "Incorrect information",
+     "sub": "The agent acts on, or reports, information that is wrong, missing or inconsistent."
+    },
+    "repeated": {
+     "label": "Repeated actions",
+     "sub": "The agent does the same thing again and again."
+    },
+    "tools": {
+     "label": "Tool failures",
+     "sub": "The tools the agent relies on fail or do not respond."
+    },
+    "safety": {
+     "label": "Safety and permissions",
+     "sub": "The agent does something it was not allowed to do, or breaks a rule."
+    },
+    "privacy": {
+     "label": "Privacy protection",
+     "sub": "Sensitive information is at risk of being exposed."
+    },
+    "security": {
+     "label": "Security threats",
+     "sub": "Someone tries to trick the agent into doing something harmful."
+    },
+    "unexpected": {
+     "label": "Unexpected situations",
+     "sub": "Unusual or incomplete situations that are easy to mishandle."
+    },
+    "custom": {
+     "label": "Your own tests",
+     "sub": "Tests your team added."
+    }
+   },
+   "categories": {
+    "prompt_injection_indicator": {
+     "name": "Resist instructions hidden in tool results",
+     "summary": "Text returned by a tool tries to give the agent new orders.",
+     "checks": "Whether AgentGuard notices the hidden instruction before the agent acts on it."
+    },
+    "sensitive_data_exposure": {
+     "name": "Protect sensitive information",
+     "summary": "Private details such as personal or account data appear where they should not.",
+     "checks": "Whether AgentGuard spots sensitive data before it is shared."
+    },
+    "unauthorized_action": {
+     "name": "Require approval before important actions",
+     "summary": "The agent performs a consequential action without a person's permission.",
+     "checks": "Whether AgentGuard stops the action or asks a person first."
+    },
+    "goal_constraint_violation": {
+     "name": "Respect limits and rules",
+     "summary": "The agent goes beyond a limit it was given, such as an amount or a scope.",
+     "checks": "Whether AgentGuard notices the limit being broken."
+    },
+    "workflow_invariant_violation": {
+     "name": "Follow the required order of steps",
+     "summary": "Steps that must happen in a fixed order happen out of order.",
+     "checks": "Whether AgentGuard notices the broken order."
+    },
+    "repeated_tool_calls": {
+     "name": "Prevent the same action being repeated",
+     "summary": "The agent repeats the same action several times, for example the same refund.",
+     "checks": "Whether AgentGuard notices the repetition."
+    },
+    "infinite_loop": {
+     "name": "Stop endless loops",
+     "summary": "The agent keeps going round the same steps without finishing.",
+     "checks": "Whether AgentGuard notices the loop and stops it."
+    },
+    "repeated_failures": {
+     "name": "Stop retrying something that keeps failing",
+     "summary": "The agent keeps retrying an action that fails every time.",
+     "checks": "Whether AgentGuard notices the retry loop."
+    },
+    "invalid_tool_arguments": {
+     "name": "Catch actions built on incorrect information",
+     "summary": "The agent tries to perform an action using incorrect or incomplete details.",
+     "checks": "Whether AgentGuard notices the incorrect details and proposes a fix."
+    },
+    "contradictory_tool_results": {
+     "name": "Notice results that contradict each other",
+     "summary": "Two results disagree, and the agent carries on as if they did not.",
+     "checks": "Whether AgentGuard notices the contradiction."
+    },
+    "missing_required_evidence": {
+     "name": "Require verification before finishing",
+     "summary": "The agent tries to finish without checking the information it needed.",
+     "checks": "Whether AgentGuard notices the missing check."
+    },
+    "unsupported_success_claim": {
+     "name": "Catch claims of success that are not true",
+     "summary": "The agent says the task succeeded although a step failed.",
+     "checks": "Whether AgentGuard notices the claim is not backed up."
+    },
+    "tool_execution_failure": {
+     "name": "Handle a failing tool",
+     "summary": "A tool the agent relies on returns an error.",
+     "checks": "Whether AgentGuard notices the failure and responds sensibly."
+    },
+    "resource_exhaustion": {
+     "name": "Stop a task that uses too much",
+     "summary": "The agent uses more steps or time than the task should need.",
+     "checks": "Whether AgentGuard notices the task running over its limit."
+    },
+    "incomplete_execution": {
+     "name": "Notice a task that was left unfinished",
+     "summary": "The agent stops part-way but behaves as if it were done.",
+     "checks": "Whether AgentGuard notices the unfinished work."
+    }
+   },
+   "clean": {
+    "normal": {
+     "name": "Everyday task done correctly",
+     "summary": "A normal task that goes through without problems.",
+     "checks": "Whether AgentGuard stays quiet when nothing is wrong."
+    },
+    "unusual": {
+     "name": "Unusual but harmless task",
+     "summary": "Something out of the ordinary that is actually fine.",
+     "checks": "Whether AgentGuard avoids a false alarm."
+    }
+   },
+   "expected": {
+    "none": "AgentGuard should let it through without a warning.",
+    "escalate": "AgentGuard should hand it to a person.",
+    "stop": "AgentGuard should stop the run.",
+    "request_evidence": "AgentGuard should ask for more evidence before finishing.",
+    "retry": "AgentGuard should retry the action safely.",
+    "correct_args": "AgentGuard should fix the incorrect details."
+   },
+   "expected_short": {
+    "none": "no warning",
+    "escalate": "hand to a person",
+    "stop": "stop the run",
+    "request_evidence": "ask for evidence",
+    "retry": "retry safely",
+    "correct_args": "fix the details"
+   },
+   "technical": {
+    "title": "Technical details",
+    "ids": "Scenario identifiers",
+    "steps": "{n} steps",
+    "author_note": "Description written by the test's author"
+   },
+   "run": {
+    "intro": "Choose what to test, check what will happen, then run it. Results appear on the Results tab.",
+    "step1": "1. Choose tests",
+    "step2": "2. Review",
+    "step3": "3. Run",
+    "step1_hint": "Pick whole groups or individual tests. Leave everything unticked to run the whole library.",
+    "select_all": "Select everything",
+    "clear": "Clear selection",
+    "review_title": "What will happen",
+    "review_none": "Nothing is selected, so the whole built-in library will run: {cases} situations.",
+    "review_some": "{tests} tests will run, covering {cases} situations.",
+    "safe_title": "Nothing real happens",
+    "safe_body": "These tests replay scripted situations through AgentGuard's checks. They do not contact your agents, call your tools or change your data, so no real action can be taken.",
+    "synthetic_title": "These are synthetic tests",
+    "synthetic_body": "Results show how AgentGuard reacts to the scripted situations. They are kept apart from your real activity and do not prove how it performs on your agents.",
+    "start": "Run tests",
+    "running": "Running…",
+    "back": "Back",
+    "next": "Review",
+    "no_permission": "Members and admins can run tests.",
+    "failed": "The run did not finish: {error}",
+    "timeout": "The run is taking longer than expected. Check the Results tab in a moment.",
+    "done": "Run finished. {passed} of {executed} passed.",
+    "see": "See results"
+   },
+   "results": {
+    "intro": "What happened in each test run. Every number below is counted from a recorded run.",
+    "none_title": "No tests have been run yet. Run your first test to evaluate AgentGuard.",
+    "run_first": "Run tests",
+    "pick": "Showing the run from {when}",
+    "choose": "Choose another run",
+    "run_label": "{when} · {n} situations",
+    "kind_synthetic": "Synthetic test run",
+    "kind_note": "Built from scripted situations. This is not real production activity.",
+    "headline": "Is AgentGuard making agents safer?",
+    "headline_body": "In {of} scripted situations, a safe outcome happened {without} times without AgentGuard and {with} times with it.",
+    "headline_not_enough": "Not enough data yet. Run more tests to answer this.",
+    "caveat_title": "Read this before trusting a high score",
+    "caveat": "These scripted situations were used while AgentGuard’s checks were being built, so passing them shows the checks are consistent with their own examples. It does not show how they will perform on new situations from your real agents.",
+    "baseline_note": "“Without AgentGuard” is worked out from the situations’ labels (any situation with a labelled problem counts as unsafe). It was not measured on a real agent.",
+    "conditions": "Test conditions",
+    "cond_dataset": "Test set",
+    "cond_situations": "Situations",
+    "cond_ran": "Run at",
+    "cond_detector": "Detector version",
+    "cond_version": "AgentGuard version",
+    "executed": "Tests executed",
+    "passed": "Tests passed",
+    "failed": "Tests failed",
+    "problems": "Problems detected",
+    "prevented": "Failures prevented",
+    "recoveries": "Recoveries verified",
+    "unnecessary": "Unnecessary warnings",
+    "delay": "Extra time added",
+    "exp_executed": "Situations that were run.",
+    "exp_passed": "AgentGuard found exactly the problems the situation contains: none missed, none extra.",
+    "exp_failed": "AgentGuard missed a problem or raised a warning that was not needed.",
+    "exp_problems": "Real problems in the situations that AgentGuard found.",
+    "exp_prevented": "Situations with a problem that ended safely with AgentGuard but not without it.",
+    "exp_recoveries": "Automatic recovery attempts that ended with the task safely back on track. Recovery is simulated in these tests.",
+    "exp_unnecessary": "Warnings raised on situations that had no problem.",
+    "exp_delay": "Average time AgentGuard added to checking each situation.",
+    "of": "{n} of {d}",
+    "not_enough": "Not enough data yet",
+    "by_group": "Results by kind of test",
+    "by_group_sub": "How many situations in each group were handled correctly.",
+    "failed_title": "Tests that failed",
+    "failed_none": "Every situation in this run was handled correctly.",
+    "missed": "Missed: {list}",
+    "extra": "Unneeded warning: {list}",
+    "small_sample": "Small sample: {message}.",
+    "tech_extra": "Detailed measurements",
+    "tech_intro": "How often warnings were correct, how many real problems were found, and the other measurements behind the numbers above.",
+    "m_precision": "How often warnings were correct (precision)",
+    "m_recall": "How many actual problems were detected (recall)",
+    "m_f1": "Balance between catching problems and avoiding wrong warnings (F1)",
+    "m_fpr": "Warnings on situations with no problem (false-positive rate)",
+    "m_loc": "Finding where the task went wrong (localization)",
+    "m_rec": "Recovery success",
+    "m_interval": "95% range: {lo} to {hi}",
+    "m_denominator": "based on {d} cases",
+    "export": "Download this run (JSON)",
+    "delete_note": ""
+   }
+  },
+  "strings": {
+   "activity_timeline": {
+    "by_actor": "· by {actor}",
+    "show_more": "Show more",
+    "remaining_older": " ({remaining} older)"
+   },
+   "approval_card": {
+    "requested_by": "requested by",
+    "in": "in",
+    "why_a_person_is_needed": "Why a person is needed:",
+    "what_the_agent_wants_to": "What the agent wants to run",
+    "what_it_did_just_before": "What it did just before",
+    "step_step_index": "step {step_index}:",
+    "error": " (error)",
+    "note_required_to_reject_or": "Note (required to reject or ask for changes)",
+    "e_g_customer_is_under": "e.g. customer is under review",
+    "approve_once": "Approve once",
+    "reject": "Reject",
+    "ask_for_changes": "Ask for changes",
+    "expires": "Expires",
+    "if_nobody_answers_it_is": "— if nobody answers it is treated as rejected.",
+    "only_members_and_admins_can": "Only members and admins can decide.",
+    "decided_by_decided_by_v2": "Decided by {decided_by} · {v2}",
+    "no_decision_was_made": "No decision was made.",
+    "used": " · used",
+    "not_used_yet": " · not used yet",
+    "status_pending": "Waiting for a decision",
+    "status_approved": "Approved",
+    "status_rejected": "Rejected",
+    "status_changes_requested": "Changes requested",
+    "status_expired": "Expired"
+   },
+   "flow": {
+    "run_timeline": "Run timeline",
+    "step_step_index_v2v3": "Step {step_index}: {v2}{v3}",
+    "click_any_step_above_to": "Click any step above to inspect its (redacted) inputs and outputs.",
+    "step_step_index": "step {step_index}",
+    "evidence_for_label_explanation": "⚠ Evidence for “{label}”: {explanation}",
+    "input": "Input",
+    "output": "Output",
+    "details": "Details",
+    "ev_start": "Start",
+    "ev_end": "End",
+    "ev_approval": "Approval",
+    "ev_recovery": "Recovery",
+    "ev_policy": "Policy: {what}",
+    "ev_policy_check": "check",
+    "ev_risk": "Risk warning",
+    "ev_call": "Call: {tool}",
+    "ev_result": "Result: {tool}",
+    "with_error": ", error"
+   },
+   "health_summary": {
+    "agent_health": "Agent health",
+    "share_of_runs_where_no": "Share of runs where no rule found a problem",
+    "a_run_is_flagged_when": "A run is “flagged” when at least one detection rule fired.",
+    "healthy": "healthy",
+    "runs_observed": "Runs observed",
+    "all_time": "all time",
+    "flagged_runs": "Flagged runs",
+    "urgent_problems": "Urgent problems",
+    "runs_whose_worst_finding_is": "Runs whose worst finding is critical or high.",
+    "healthy_runs": "Healthy runs",
+    "no_findings": "no findings",
+    "legend_healthy": "Healthy runs",
+    "legend_flagged": "Flagged runs"
+   },
+   "integration_wizard": {
+    "python_filename": "python {filename}",
+    "python_v1": "python {v1}"
+   },
+   "problem_card": {
+    "proven_by_rule": "proven by rule",
+    "heuristic": "heuristic",
+    "see_details": "See details"
+   },
+   "problem_details": {
+    "proven_by_rule": "proven by rule",
+    "heuristic": "heuristic",
+    "confidence_confidence": "confidence {confidence}",
+    "why_it_matters": "Why it matters:",
+    "suggested_fix": "Suggested fix:",
+    "evidence": "Evidence:",
+    "step": "step",
+    "technical_details_the_exact_events": "Technical details: the exact events"
+   },
+   "safety_rule_card": {
+    "enable_name": "Enable {name}",
+    "vversion": "v{version}",
+    "agent_s": "agent(s),",
+    "tool_s": "tool(s) ·",
+    "applies_to": "Applies to:",
+    "when": "When:",
+    "evaluations_checks_matches_triggered": "{evaluations} checks · {matches} triggered",
+    "edit_test": "Edit / test",
+    "view_test": "View / test",
+    "version_history_n_versions": "Version history ({n_versions})",
+    "effects_none": "Never triggered yet.",
+    "effects_line": "In practice: stopped {blocked} · asked for approval {approval} · warned {warned}{watched}",
+    "effects_watched": " · would have acted {n} times but was only watching",
+    "effects_last": " · last triggered {when}"
+   },
+   "approvals": {
+    "approved_the_agent_can_now": "Approved. The agent can now run this action once.",
+    "decision_recorded": "Decision recorded.",
+    "human_approvals": "Human approvals",
+    "actions_an_agent_is_not": "Actions an agent is not allowed to take on its own. The agent waits here until you decide.",
+    "an_approval_lets_the_agent": "An approval lets the agent run exactly this action, with exactly these inputs, once. It can never override a rule that says BLOCK. This page refreshes by itself.",
+    "nothing_is_waiting_for_you": "Nothing is waiting for you",
+    "nothing_here": "Nothing here",
+    "chip_waiting": "Waiting",
+    "chip_everything": "Everything",
+    "status_pending": "Waiting for a decision",
+    "status_approved": "Approved",
+    "status_rejected": "Rejected",
+    "status_changes_requested": "Changes requested",
+    "status_expired": "Expired"
+   },
+   "history": {
+    "everything": "Everything",
+    "nothing_recorded_yet": "Nothing recorded yet",
+    "actions_like_running_a_benchmark": "Actions like running a benchmark or simulating a recovery will appear here.",
+    "no_benchmark_runs_yet": "No benchmark runs yet",
+    "open_benchmark_lab": "Open Benchmark Lab",
+    "how_results_changed_over_time": "How results changed over time",
+    "one_point_per_completed_benchmark": "One point per completed benchmark run",
+    "lines_going_up_are_good": "Lines going up are good. If a line drops after you changed a setting, that change made AgentGuard worse at that job.",
+    "all_runs": "All runs",
+    "when": "When",
+    "scope": "Scope",
+    "safe_outcome": "Safe outcome",
+    "failures_caught": "Failures caught",
+    "flags_right": "Flags right",
+    "settings_used": "Settings used",
+    "open": "Open",
+    "cfg": "retries {retries} · loop at {loop}{off}",
+    "cfg_off": " · rules off: {rules}",
+    "x_label": "Run number (oldest → newest)",
+    "tab_activity": "Activity",
+    "tab_bench": "Benchmark trend",
+    "tab_security": "Security log"
+   },
+   "policies": {
+    "policy_saved": "Policy saved.",
+    "edit_name": "Edit {name}",
+    "new_policy": "New policy",
+    "start_from_a_template": "Start from a template",
+    "1_what_is_it_called": "1 · What is it called?",
+    "name": "Name",
+    "prevent_duplicate_refunds": "prevent_duplicate_refunds",
+    "what_is_it_for": "What is it for?",
+    "kind": "Kind",
+    "2_which_calls_does_it": "2 · Which calls does it cover?",
+    "agents_comma_separated_all": "Agents (comma-separated, * = all)",
+    "tools_comma_separated_all": "Tools (comma-separated, * = all)",
+    "3_when_should_it_trigger": "3 · When should it trigger?",
+    "condition": "Condition",
+    "choose": "Choose…",
+    "4_what_should_happen": "4 · What should happen?",
+    "action": "Action",
+    "severity": "Severity",
+    "message_shown_with_the_decision": "Message shown with the decision",
+    "large_refund": "Large refund",
+    "try_it_before_saving": "Try it before saving",
+    "tool_being_called": "Tool being called",
+    "issue_refund": "issue_refund",
+    "its_arguments_json": "Its arguments (JSON)",
+    "consequential": "consequential",
+    "test_this_call": "Test this call",
+    "replay_on_recent_runs": "Replay on recent runs",
+    "would_trigger_v1": "Would trigger: {v1}",
+    "would_not_trigger": "Would not trigger",
+    "not_applicable": "Not applicable",
+    "none": "none",
+    "would_trigger_of_tool_calls": "{would_trigger} of {tool_calls_examined} recent tool calls would have been affected",
+    "step_step_index_explanation": "step {step_index}: {explanation}",
+    "what_changed_kept_in_the": "What changed? (kept in the version history)",
+    "save_as_new_version": "Save as new version",
+    "create_policy": "Create policy",
+    "only_admins_can_save_policies": "Only admins can save policies.",
+    "rolled_back_vv_is_now": "Rolled back: v{v} is now the newest version.",
+    "name_history": "{name} — history",
+    "version_version": "Version {version}",
+    "in_use": "in use",
+    "roll_back_to_this_version": "Roll back to this version",
+    "history_is_never_rewritten_a": "History is never rewritten: a roll-back creates a new version, so you can always see what was in force when.",
+    "every_decision_with_the_reason": "Every decision, with the reason",
+    "stored_with_the_exact_inputs": "Stored with the exact inputs each policy saw, so any decision can be reproduced",
+    "only_rules_that_triggered": "Only rules that triggered",
+    "everything_evaluated": "Everything evaluated",
+    "no_decisions_yet": "No decisions yet.",
+    "when": "When",
+    "policy": "Policy",
+    "tool": "Tool",
+    "result": "Result",
+    "why": "Why",
+    "run": "Run",
+    "vversion": "v{version}",
+    "no_match": "no match",
+    "mode_mode": "({mode} mode)",
+    "name_is_now_v2": "{name} is now {v2}.",
+    "rules_for_what_agents_may": "Rules for what agents may do",
+    "checked_before_every_tool_call": "Checked before every tool call. Observe mode only records, warn mode only warns, enforce mode really stops the action.",
+    "new_policy_2": "＋ New policy",
+    "no_policies_yet": "No policies yet",
+    "without_policies_agentguard_still_records": "Without policies AgentGuard still records and detects problems, but nothing is ever blocked. Start from a template.",
+    "create_the_first_policy": "Create the first policy",
+    "tab_policies": "Policies",
+    "tab_log": "Decision log"
+   },
+   "settings": {
+    "is_everything_working": "Is everything working?",
+    "running_version_version": "Running (version {version})",
+    "not_reachable": "Not reachable",
+    "backend": "Backend",
+    "connected_your_data_is_being": "Connected — your data is being saved",
+    "database": "Database",
+    "on_provider": "On ({provider})",
+    "off_this_is_optional_every": "Off. This is optional — every finding comes from rules and works without it.",
+    "ai_second_opinion": "AI second opinion",
+    "required_sessions_last_session_hours": "Required. Sessions last {session_hours} hours.",
+    "turned_off_anyone_who_can": "Turned off — anyone who can reach this server has full access. Only use this on your own machine.",
+    "sign_in": "Sign-in",
+    "who_can_do_what": "Who can do what",
+    "you_are_signed_in_as": "You are signed in as {v1}",
+    "software_agents_don_t_sign": "Software agents don’t sign in: they use an API key, which can only send execution histories (see “Connect an agent”).",
+    "how_your_data_is_protected": "How your data is protected",
+    "applied_automatically_before_anything_is": "Applied automatically before anything is stored",
+    "hidden_or_removed_r": "Hidden or removed: {r}",
+    "largest_batch_of_events_accepted": "Largest batch of events accepted in one request: {max_events_per_request}",
+    "nothing_needed_changing": "Nothing needed changing.",
+    "cleaned_up_deleted_traces_old": "Cleaned up: {deleted_traces} old run(s) deleted.",
+    "you_can_see_these_settings": "You can see these settings, but only admins can change them. You are a",
+    "changed_from_default_default": "changed from default ({default})",
+    "label_number": "{label} (number)",
+    "reset_to_default": "Reset to default",
+    "delete_all_traces_older_than": "Delete all runs older than {retention_days} days?",
+    "yes_delete": "Yes, delete",
+    "cancel": "Cancel",
+    "clean_up_now": "Clean up now",
+    "set_a_number_of_days": "Set a number of days first and save",
+    "detection_rules": "Detection rules",
+    "turn_off_a_rule_to": "Turn off a rule to stop AgentGuard looking for that problem. Everything stored is re-checked when you save.",
+    "turning_a_rule_off_also": "Turning a rule off also means fewer real problems are caught in the Benchmark Lab, so you can see what you give up.",
+    "needs_needs": "Needs: {needs}",
+    "unsaved_changes": "Unsaved changes",
+    "you_have_unsaved_changes": "You have unsaved changes.",
+    "discard": "Discard",
+    "saving": "Saving…",
+    "save_changes": "Save changes",
+    "rotated_name_the_old_key": "Rotated “{name}”: the old key stopped working.",
+    "revoked_name": "Revoked “{name}”.",
+    "api_keys": "API keys",
+    "a_key_lets_one_agent": "A key lets one agent send its runs and ask for decisions. It cannot read anything. Keys are stored hashed and shown only once.",
+    "guided_setup": "Guided setup →",
+    "ask_an_admin_to_create": "Ask an admin to create or rotate keys.",
+    "key_name_e_g_the": "Key name (e.g. the agent it is for)",
+    "support_agent_production": "support-agent (production)",
+    "create_key": "Create key",
+    "your_new_key_copy_it": "Your new key — copy it now, it won’t be shown again:",
+    "no_keys_yet": "No keys yet.",
+    "name": "Name",
+    "starts_with": "Starts with",
+    "created": "Created",
+    "last_used": "Last used",
+    "by_created_by": "by {created_by}",
+    "never": "never",
+    "revoked": "revoked",
+    "rotate": "Rotate",
+    "issue_a_new_key_and": "Issue a new key and stop the old one immediately",
+    "revoke": "Revoke",
+    "people": "People",
+    "everyone_who_can_sign_in": "Everyone who can sign in to this AgentGuard",
+    "person": "Person",
+    "role": "Role",
+    "active": "Active",
+    "last_sign_in": "Last sign-in",
+    "password": "Password",
+    "you": "you",
+    "role_for_email": "Role for {email}",
+    "active_email": "Active: {email}",
+    "reset": "Reset…",
+    "new_password_for_email": "New password for {email}",
+    "new_password": "new password",
+    "set": "Set",
+    "there_must_always_be_at": "There must always be at least one active admin; AgentGuard won’t let you remove the last one.",
+    "add_a_person": "Add a person",
+    "share_the_password_with_them": "Share the password with them securely; they can change it after signing in.",
+    "email": "Email",
+    "starting_password": "Starting password",
+    "add": "Add",
+    "the_new_passwords_don_t": "The new passwords don’t match.",
+    "password_changed_other_devices_were": "Password changed. Other devices were signed out.",
+    "your_account": "Your account",
+    "name_2": "Name:",
+    "email_2": "Email:",
+    "role_2": "Role:",
+    "change_your_password": "Change your password",
+    "changing_it_signs_you_out": "Changing it signs you out everywhere else.",
+    "current_password": "Current password",
+    "new_password_2": "New password",
+    "repeat_new_password": "Repeat new password",
+    "change_password": "Change password",
+    "sign_in_is_turned_off": "Sign-in is turned off",
+    "there_are_no_passwords_to": "There are no passwords to manage in local mode.",
+    "t_overview": "General",
+    "t_safety": "Safety and detection",
+    "t_keys": "Agent connections",
+    "t_team": "Team and permissions",
+    "t_account": "Account",
+    "role_updated": "Role updated.",
+    "reenabled": "Re-enabled.",
+    "disabled_out": "Disabled and signed out.",
+    "pw_reset_done": "Password reset; they were signed out.",
+    "person_added": "Person added.",
+    "software_agents_don_t_sign@advanced": "Software agents don’t sign in: they use an API key, which can only send traces (see “Connect an agent”).",
+    "cleaned_up_deleted_traces_old@advanced": "Cleaned up: {deleted_traces} old trace(s) deleted.",
+    "delete_all_traces_older_than@advanced": "Delete all traces older than {retention_days} days?",
+    "turning_a_rule_off_also@advanced": "Turning a rule off also lowers recall in the Benchmark Lab, so you can see what you give up.",
+    "t_provider": "AI provider",
+    "t_retention": "Data retention",
+    "provider_title": "AI second opinion",
+    "provider_on": "On, using {provider}. AgentGuard asks it only to explain problems it has already found; it never decides what is blocked.",
+    "provider_off": "Off. This is optional: every check works without it.",
+    "provider_how": "The provider is set by whoever runs the server, using these environment variables, so the key is never stored in the app or shown here: LLM_PROVIDER, LLM_API_KEY and LLM_MODEL. Restart the server after changing them.",
+    "provider_sends": "What is sent: the redacted steps of one run, only when someone asks for a diagnosis.",
+    "retention_title": "How long activity is kept",
+    "retention_intro": "Older runs are deleted to keep the database small. Set 0 to keep everything."
+   },
+   "trace_detail": {
+    "what_is_safe_to_do": "What is safe to do next",
+    "agentguard_only_ever_previews_or": "AgentGuard only ever previews or simulates here. It never executes a real tool.",
+    "why_reason": "Why: {reason}",
+    "try_it_in_a_simulated": "Try it in a simulated environment",
+    "how_many_retries_will_still": "How many retries will still fail first?",
+    "exceeds_the_limit_of_3": " (exceeds the limit of 3)",
+    "the_corrected_arguments_turn_out": "The corrected arguments turn out to be valid",
+    "the_missing_evidence_is_available": "The missing evidence is available",
+    "this_outcome_never_depends_on": "This outcome never depends on the environment: a human decides.",
+    "simulating": "Simulating…",
+    "run_simulation": "Run simulation",
+    "members_and_admins_can_run": "Members and admins can run simulations",
+    "viewers_can_read_the_plan": "Viewers can read the plan but not run simulations.",
+    "attempts_attempt_s": "{attempts} attempt(s). ",
+    "ai_second_opinion_optional": "AI second opinion (optional)",
+    "a_language_model_reads_only": "A language model reads only the relevant redacted events and offers a hypothesis. It is never treated as proof and never triggers actions.",
+    "asking": "Asking…",
+    "ask_the_ai_to_explain": "Ask the AI to explain",
+    "ai_hypothesis_not_proven": "AI hypothesis — not proven",
+    "likely_cause": "Likely cause:",
+    "human_review_recommended": "Human review recommended",
+    "no_review_flagged": "No review flagged",
+    "cited_steps": "Cited steps:",
+    "confidence": "Confidence:",
+    "limits_limitations": "Limits: {limitations}",
+    "ai_diagnosis_isn_t_configured": "AI diagnosis isn’t configured, which is fine — every finding above comes from deterministic rules.",
+    "ai_diagnosis_unavailable_status": "AI diagnosis unavailable ({status}).",
+    "all_traces": "← All runs",
+    "length_steps": "{length} steps",
+    "outcome": "Outcome",
+    "mode_mode_v2": "{mode} mode · {v2}",
+    "risk_score": "Risk level",
+    "highest_reached": "highest reached",
+    "actions_blocked": "Actions blocked",
+    "tool_calls": "Tool calls",
+    "still_running": "still running",
+    "v1_s": "{v1} s",
+    "tokens_cost": "Tokens / cost",
+    "task_given_to_the_agent": "Task given to the agent:",
+    "what_happened": "What happened",
+    "each_box_is_one_step": "Each box is one step of the run, left to right. Red = error. Outlined = evidence for a finding. Click any step to inspect it.",
+    "where_the_problem_started": "where the problem started",
+    "not_determinable_from_the_recorded": " — not determinable from the recorded evidence",
+    "origin": "Origin",
+    "earliest_step_at_which_a": "earliest step at which a rule could prove it",
+    "first_detectable": "First detectable",
+    "last_step_that_shows_it": "last step that shows it",
+    "observed": "Observed",
+    "no_failure_to_localize": "No step to point to: nothing went wrong.",
+    "findings_length": "Findings ({length})",
+    "each_finding_comes_from_an": "Each finding comes from an explicit rule, so it is a proven violation of that rule — not a guess.",
+    "no_rule_found_a_problem": "✅ No rule found a problem in this run.",
+    "policy_decisions": "Policy decisions",
+    "each_check_happened_before_the": "Each check happened BEFORE the tool was allowed to run",
+    "step_step_index": "step {step_index}",
+    "mode_mode": "({mode} mode",
+    "enforce_mode_would_have_said": "; enforce mode would have said {v1}",
+    "risk_warnings": "Risk warnings",
+    "predicted_before_the_action_ran": "Predicted before the action ran — separate from confirmed findings above",
+    "score_score": "Score {score}",
+    "predicted_not_confirmed": "predicted, not confirmed",
+    "technical_details_every_recorded_event": "Technical details: every recorded event",
+    "o_recovered": "Recovered automatically",
+    "o_escalated": "Handed to a human",
+    "o_stopped": "Run stopped",
+    "o_none": "No action taken",
+    "mk_origin": "Origin",
+    "mk_first": "First detectable",
+    "mk_observed": "Observed",
+    "all_traces@advanced": "← All traces",
+    "risk_score@advanced": "Risk score",
+    "no_failure_to_localize@advanced": "No failure to localize."
+   },
+   "traces": {
+    "no_traces_yet": "No activity yet. Connect an agent and send its first task.",
+    "send_traces_from_your_agent": "Send runs from your agent with the SDK, or explore with synthetic demo data.",
+    "severity_mix": "Severity mix",
+    "runs_by_severity": "Runs by severity",
+    "s_v2_runs": "{s}: {v2} runs",
+    "no_problems_found": "No problems found.",
+    "most_common_problems": "Most common problems",
+    "search_by_run_id": "Search by run ID",
+    "type_part_of_an_id": "type part of an ID…",
+    "order": "Order",
+    "newest_first": "Newest first",
+    "most_severe_first": "Most severe first",
+    "longest_runs_first": "Longest runs first",
+    "riskiest_first": "Riskiest first",
+    "agent": "Agent",
+    "all_agents": "All agents",
+    "outcome": "Outcome",
+    "any_outcome": "Any outcome",
+    "problem": "Problem",
+    "any_problem": "Any problem",
+    "showing_only": "Showing only:",
+    "clear_all": "Clear all",
+    "no_runs_match_these_filters": "No runs match these filters",
+    "clear_filters": "Clear filters",
+    "risk_risk_score": "risk {risk_score}",
+    "highest_risk_score_reached": "Highest risk reached",
+    "blocked_actions_blocked": "{blocked_actions} blocked",
+    "healthy": "healthy",
+    "task_task": "Task: {task}",
+    "no_issues_detected_this_run": "No issues detected — this run looks healthy.",
+    "n_events_steps_agent_name": "{n_events} steps · {agent_name}",
+    "mode_mode": " · {mode} mode",
+    "open": "Open →",
+    "each_little_square_under_a": "Each little square under a run is one step, left to right. Red squares are steps where something went wrong.",
+    "showing": "Showing",
+    "of_total": "of {total}",
+    "previous": "← Previous",
+    "next": "Next →",
+    "pill_outcome": "Outcome: {v}",
+    "pill_q": "Search: “{v}”",
+    "pill_flagged": "Flagged only",
+    "pill_healthy": "Healthy only",
+    "pill_severity": "Severity: {v}",
+    "pill_agent": "Agent: {v}",
+    "f_all": "All runs",
+    "f_flagged": "Flagged",
+    "f_clean": "Healthy",
+    "send_traces_from_your_agent@advanced": "Send traces from your agent with the SDK, or explore with synthetic demo data.",
+    "highest_risk_score_reached@advanced": "Highest risk score reached",
+    "connect_agent": "Connect an agent"
+   },
+   "ui": {
+    "clean": "clean",
+    "i": "i",
+    "length_steps_v2_with_problems": "{length} steps, {v2} with problems",
+    "step_i_v2v3": "Step {i}: {v2}{v3}",
+    "close": "Close ✕",
+    "problem_suffix": " (problem)"
+   },
+   "technical_details": {
+    "title": "Technical details"
+   },
+   "integrations": {
+    "guided_key_name": "{name} (guided setup)",
+    "agent_fallback": "agent"
+   }
+  }
+ },
+ "roles": [
+  {
+   "key": "viewer",
+   "label": "Viewer",
+   "home": "/overview",
+   "plain": "Can look at everything but change nothing."
+  },
+  {
+   "key": "member",
+   "label": "Member",
+   "home": "/overview",
+   "plain": "Can also decide approvals, run benchmarks and simulations, connect agents, load demo data and add scenarios."
+  },
+  {
+   "key": "admin",
+   "label": "Admin",
+   "home": "/overview",
+   "plain": "Can also edit safety rules, manage people, API keys and settings, and see the security history."
+  }
+ ]
+}

@@ -1,21 +1,21 @@
 # Evaluation
 
-**All numbers come from a SYNTHETIC, SIMULATED benchmark** (189 scenarios: template-generated + 10 hand-written adversarial), seed 0. Nothing here comes from a real agent.
+**All numbers come from a SYNTHETIC, SIMULATED benchmark** (128 scenarios: template-generated + 10 hand-written adversarial), seed 0. Nothing here comes from a real agent.
 Reproduce: `cd backend && python -m app.evaluation.cli generate && python -m app.evaluation.adversarial && python -m app.evaluation.cli run --json ../benchmarks/results/latest.json && python ../scripts/render_results.py`
 
 | Metric (denominator) | Baseline | Protected |
 |---|---|---|
-| Task success (all 189 scenarios) | 26.5% | 35.4% (Δ 95% CI 4.8 to 13.2 pts) |
-| Safe outcome (all scenarios) | 26.5% | 95.2% (Δ 95% CI 61.9 to 75.7 pts) |
-| Detection micro P / R / F1 | n/a | 99.5% / 98.9% / 99.2% |
-| Macro-F1 (categories with support) | n/a | 99.2% |
-| False-positive rate (clean scenarios, n=50) | n/a | 2.0% |
-| Localization accuracy (n=139 labelled) | n/a | 98.6%, mean abs step error 0.01 |
-| Recovery success (attempted recoveries, n=29) | n/a | 65.5% |
-| Unnecessary intervention rate (clean scenarios) | n/a | 2.0% |
-| Early-warning precision (n=76 warnings) | n/a | 88.2% |
-| Early-warning recall (n=152 predictable failures) | n/a | 44.1% |
-| Added latency, mean ± std per scenario | n/a | 0.058 ± 0.038 ms |
+| Task success (all 128 scenarios) | 32.0% | 43.0% (Δ 95% CI 5.5 to 17.2 pts) |
+| Safe outcome (all scenarios) | 32.0% | 93.0% (Δ 95% CI 51.6 to 68.8 pts) |
+| Detection micro P / R / F1 | n/a | 99.1% / 98.2% / 98.7% |
+| Macro-F1 (categories with support) | n/a | 98.7% |
+| False-positive rate (clean scenarios, n=41) | n/a | 2.4% |
+| Localization accuracy (n=87 labelled) | n/a | 97.7%, mean abs step error 0.01 |
+| Recovery success (attempted recoveries, n=24) | n/a | 66.7% |
+| Unnecessary intervention rate (clean scenarios) | n/a | 2.4% |
+| Early-warning precision (n=38 warnings) | n/a | 76.3% |
+| Early-warning recall (n=86 predictable failures) | n/a | 33.7% |
+| Added latency, mean ± std per scenario | n/a | 0.087 ± 0.045 ms |
 | Cost per run | n/a | $0 (no paid model calls) |
 
 ## Detection quality by data split
@@ -23,9 +23,9 @@ Scenarios are assigned to dev / validation / test by a fixed hash of their id (6
 
 | Set | Scenarios | Precision | Recall | False alarms on healthy runs | Early-warning precision | Early-warning recall |
 |---|---|---|---|---|---|---|
-| dev | 104 | 99.0% | 100.0% | 3.4% (n=29) | 84% | 48% |
-| test | 39 | 100.0% | 97.6% | 0.0% (n=9) | 87% | 41% |
-| validation | 46 | 100.0% | 97.9% | 0.0% (n=12) | 100% | 39% |
+| dev | 83 | 98.6% | 100.0% | 3.6% (n=28) | 75% | 38% |
+| test | 19 | 100.0% | 95.0% | 0.0% (n=3) | 50% | 15% |
+| validation | 26 | 100.0% | 95.2% | 0.0% (n=10) | 100% | 35% |
 
 **Caveat:** the detectors and the risk weights were written and adjusted while looking at these scenarios, so even the "test" set is not independent. It is a consistency check, not proof of generalisation.
 
@@ -34,17 +34,17 @@ Graded against the ground-truth labels (not against the detectors' own findings)
 
 | Failure type | Warned first |
 |---|---|
-| goal constraint violation | 7 of 10 |
-| infinite loop | 9 of 9 |
-| invalid tool arguments | 3 of 12 |
+| goal constraint violation | 7 of 8 |
+| infinite loop | 3 of 3 |
+| invalid tool arguments | 2 of 7 |
 | prompt injection indicator | 0 of 9 |
-| repeated failures | 10 of 10 |
-| repeated tool calls | 11 of 15 |
-| resource exhaustion | 3 of 9 |
-| tool execution failure | 0 of 40 |
-| unauthorized action | 14 of 18 |
-| unsupported success claim | 0 of 10 |
-| workflow invariant violation | 10 of 10 |
+| repeated failures | 3 of 3 |
+| repeated tool calls | 7 of 10 |
+| resource exhaustion | 1 of 3 |
+| tool execution failure | 0 of 25 |
+| unauthorized action | 4 of 8 |
+| unsupported success claim | 0 of 8 |
+| workflow invariant violation | 2 of 2 |
 
 No early signal exists for: contradictory tool results, incomplete execution, missing required evidence, sensitive data exposure. A first-ever tool failure cannot be predicted. Token/cost budget breaches that happen inside a model call have no tool call to intercept, so they are not warned about. Success claims are only checked after the fact: there is no pre-finish check yet.
 

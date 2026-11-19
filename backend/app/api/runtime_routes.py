@@ -1,13 +1,16 @@
-import json, uuid
+import json, os, uuid
 from datetime import datetime, timedelta, timezone
 from typing import Literal
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from app.api.deps import Principal, audit, get_db, require, require_agent
+from app.api.deps import Principal, audit, get_db, needs, require, require_agent
 from app.auth import sha
-from app.catalog import ACTIONS, CATEGORIES as FAIL_CATS, SEV_RANK
+from app.services import problems as P, timeline as TL
+from app.services.scope import Scope, SYNTHETIC, by_trace, scoped
+from app.services.starter import starter_file
+from app.catalog import ACTIONS, AGENT_QUIET_DAYS, CATEGORIES as FAIL_CATS, SEV_RANK
 from app.db.models import AgentRow, ApprovalRow, FindingRow, PolicyEvalRow, PolicyRow, PolicyVersionRow, RiskPredictionRow, TraceRow
 from app.redaction import redact
 from app.risk.engine import ACTION_FOR, assess
@@ -57,10 +60,18 @@ def policy_templates(_: Principal = Depends(require("viewer"))): return {"items"
 def list_policies(p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
     rows = db.scalars(select(PolicyRow).where(PolicyRow.workspace_id == p.workspace_id).order_by(PolicyRow.name))
     stats = {pid: (n, m) for pid, n, m in db.execute(select(PolicyEvalRow.policy_id, func.count(), func.sum(PolicyEvalRow.matched.cast(__import__("sqlalchemy").Integer))).where(PolicyEvalRow.workspace_id == p.workspace_id).group_by(PolicyEvalRow.policy_id))}
-    return {"items": [{**_pdump(db, r), "evaluations": stats.get(r.id, (0, 0))[0], "matches": int(stats.get(r.id, (0, 0))[1] or 0)} for r in rows]}
+    eff: dict[int, dict] = {}                 # what each rule really did when it matched, counted from the recorded decisions
+    for pid, effective, action, n, last in db.execute(select(PolicyEvalRow.policy_id, PolicyEvalRow.effective, PolicyEvalRow.action, func.count(), func.max(PolicyEvalRow.created_at)).where(PolicyEvalRow.workspace_id == p.workspace_id, PolicyEvalRow.matched.is_(True)).group_by(PolicyEvalRow.policy_id, PolicyEvalRow.effective, PolicyEvalRow.action)):
+        e = eff.setdefault(pid, {"blocked": 0, "approval_requested": 0, "warned": 0, "only_watched": 0, "last_matched_at": None})
+        if effective == "BLOCK": e["blocked"] += n
+        elif effective == "REQUIRE_APPROVAL": e["approval_requested"] += n
+        elif effective == "WARN": e["warned"] += n
+        elif action in ("BLOCK", "REQUIRE_APPROVAL", "WARN"): e["only_watched"] += n      # the rule matched but the mode (observe) let it through
+        e["last_matched_at"] = max(filter(None, [e["last_matched_at"], last]), default=None)
+    return {"items": [{**_pdump(db, r), "evaluations": stats.get(r.id, (0, 0))[0], "matches": int(stats.get(r.id, (0, 0))[1] or 0), "effects": eff.get(r.id, {"blocked": 0, "approval_requested": 0, "warned": 0, "only_watched": 0, "last_matched_at": None})} for r in rows]}
 
 @router.post("/policies", status_code=201)
-def create_policy(b: PolicyIn, p: Principal = Depends(require("admin")), db: Session = Depends(get_db)):
+def create_policy(b: PolicyIn, p: Principal = Depends(needs("edit_policies")), db: Session = Depends(get_db)):
     _validate(b.definition)
     if db.scalar(select(PolicyRow).where(PolicyRow.workspace_id == p.workspace_id, PolicyRow.name == b.name)): raise HTTPException(409, "A policy with this name already exists.")
     row = PolicyRow(workspace_id=p.workspace_id, name=b.name, description=b.description, category=b.category, enabled=b.enabled, created_by=p.email); db.add(row); db.flush()
@@ -129,7 +140,7 @@ def simulate_policy(b: SimIn, p: Principal = Depends(require("viewer")), db: Ses
 def get_policy(pid: int, p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)): return _pdump(db, _policy(db, p.workspace_id, pid), True)
 
 @router.put("/policies/{pid}")
-def update_policy(pid: int, b: PolicyUpdate, p: Principal = Depends(require("admin")), db: Session = Depends(get_db)):
+def update_policy(pid: int, b: PolicyUpdate, p: Principal = Depends(needs("edit_policies")), db: Session = Depends(get_db)):
     row = _policy(db, p.workspace_id, pid)
     if b.description is not None: row.description = b.description
     if b.category is not None: row.category = b.category
@@ -141,13 +152,20 @@ def update_policy(pid: int, b: PolicyUpdate, p: Principal = Depends(require("adm
     db.commit(); audit(db, p, "policy_updated", row.name, {"version": row.current_version}); return _pdump(db, row, True)
 
 class Toggle(BaseModel): enabled: bool
+@router.delete("/policies/{pid}")
+def delete_policy(pid: int, p: Principal = Depends(needs("edit_policies")), db: Session = Depends(get_db)):
+    row = _policy(db, p.workspace_id, pid); name = row.name
+    for v in db.scalars(select(PolicyVersionRow).where(PolicyVersionRow.policy_id == pid)): db.delete(v)
+    db.delete(row); db.commit(); audit(db, p, "policy_deleted", name)      # past decisions stay in the log: they are the audit trail
+    return {"deleted": 1}
+
 @router.post("/policies/{pid}/toggle")
-def toggle_policy(pid: int, b: Toggle, p: Principal = Depends(require("admin")), db: Session = Depends(get_db)):
+def toggle_policy(pid: int, b: Toggle, p: Principal = Depends(needs("edit_policies")), db: Session = Depends(get_db)):
     row = _policy(db, p.workspace_id, pid); row.enabled = b.enabled; db.commit(); audit(db, p, "policy_toggled", row.name, {"enabled": b.enabled}); return _pdump(db, row)
 
 class Rollback(BaseModel): version: int
 @router.post("/policies/{pid}/rollback")
-def rollback_policy(pid: int, b: Rollback, p: Principal = Depends(require("admin")), db: Session = Depends(get_db)):
+def rollback_policy(pid: int, b: Rollback, p: Principal = Depends(needs("edit_policies")), db: Session = Depends(get_db)):
     row = _policy(db, p.workspace_id, pid); old = db.scalar(select(PolicyVersionRow).where(PolicyVersionRow.policy_id == pid, PolicyVersionRow.version == b.version))
     if not old: raise HTTPException(404, "That version does not exist.")
     row.current_version = max(v.version for v in _versions(db, pid)) + 1   # history is never rewritten: a rollback is a NEW version
@@ -165,12 +183,14 @@ def _adump(a: ApprovalRow) -> dict:
             "status": a.status, "consumed": a.consumed, "decided_by": a.decided_by, "decision_note": a.decision_note, "decided_at": a.decided_at, "expires_at": a.expires_at, "created_at": a.created_at}
 
 @router.get("/approvals")
-def list_approvals(status: str | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0), p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
+def list_approvals(status: str | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0), data: Scope = "production", p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
     expire_approvals(db, p.workspace_id)
-    q = select(ApprovalRow).where(ApprovalRow.workspace_id == p.workspace_id)
+    q = select(ApprovalRow).where(ApprovalRow.workspace_id == p.workspace_id); ac = by_trace(ApprovalRow.trace_id, p.workspace_id, data)
+    if ac is not None: q = q.where(ac)
     if status: q = q.where(ApprovalRow.status == status)
     total = db.scalar(select(func.count()).select_from(q.subquery()))
-    pend = db.scalar(select(func.count()).select_from(ApprovalRow).where(ApprovalRow.workspace_id == p.workspace_id, ApprovalRow.status == "pending"))
+    pq = select(func.count()).select_from(ApprovalRow).where(ApprovalRow.workspace_id == p.workspace_id, ApprovalRow.status == "pending")
+    pend = db.scalar(pq if ac is None else pq.where(ac))
     return {"total": total, "pending": pend, "items": [_adump(a) for a in db.scalars(q.order_by(ApprovalRow.created_at.desc()).limit(limit).offset(offset))]}
 
 def _approval(db: Session, ws: int, aid: int) -> ApprovalRow:
@@ -189,7 +209,7 @@ def get_approval(aid: int, p: Principal = Depends(require_agent), db: Session = 
 class Decision(BaseModel):
     decision: Literal["approve", "reject", "request_changes"]; note: str = Field(default="", max_length=500)
 @router.post("/approvals/{aid}/decision")
-def decide_approval(aid: int, b: Decision, p: Principal = Depends(require("member")), db: Session = Depends(get_db)):
+def decide_approval(aid: int, b: Decision, p: Principal = Depends(needs("decide_approvals")), db: Session = Depends(get_db)):
     expire_approvals(db, p.workspace_id); a = _approval(db, p.workspace_id, aid)
     if a.status != "pending": raise HTTPException(409, f"This request is already {a.status}.")
     if b.decision != "approve" and not b.note.strip(): raise HTTPException(422, "Please explain why, so the agent's owner knows what to fix.")
@@ -253,10 +273,10 @@ def risk_predictions(trace_id: str | None = None, level: str | None = None, outc
             "signals": r.signals, "recommended_action": r.recommended_action, "outcome": r.outcome, "lead_steps": r.lead_steps, "created_at": r.created_at} for r in db.scalars(q.order_by(RiskPredictionRow.score.desc(), RiskPredictionRow.id.desc()).limit(limit).offset(offset))]}
 
 @router.get("/risk/metrics")
-def risk_metrics(p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
-    ws = p.workspace_id; preds = list(db.scalars(select(RiskPredictionRow).where(RiskPredictionRow.workspace_id == ws)))
+def risk_metrics(data: Scope = "production", p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
+    ws = p.workspace_id; rc = by_trace(RiskPredictionRow.trace_id, ws, data); preds = list(db.scalars(select(RiskPredictionRow).where(RiskPredictionRow.workspace_id == ws, *([rc] if rc is not None else []))))
     res = [r for r in preds if r.outcome in ("occurred", "not_occurred")]; hit = [r for r in res if r.outcome == "occurred"]; hi = [r for r in res if r.level in ("high", "critical")]
-    predictable = set(ACTION_FOR); fails = {(f.trace_id, f.category) for f in db.scalars(select(FindingRow).where(FindingRow.workspace_id == ws)) if f.category in predictable}
+    predictable = set(ACTION_FOR); fails = {(f.trace_id, f.category) for f in db.scalars(select(FindingRow).where(FindingRow.workspace_id == ws, *([by_trace(FindingRow.trace_id, ws, data)] if data != "all" else []))) if f.category in predictable}
     caught = {(r.trace_id, r.predicted_failure) for r in hit} & fails; leads = [r.lead_steps for r in hit if r.lead_steps is not None]
     f = lambda a, b: (a / b) if b else None
     return {"n_predictions": len(preds), "n_resolved": len(res), "n_pending": len(preds) - len(res), "precision": f(len(hit), len(res)), "n_failures": len(fails), "recall": f(len(caught), len(fails)),
@@ -265,9 +285,9 @@ def risk_metrics(p: Principal = Depends(require("viewer")), db: Session = Depend
                             "lead": "steps between the warning and the step where the failure became detectable (0 = caught just before the action ran)", "false_intervention": "high/critical warnings that were not followed by the failure / all resolved high/critical warnings"}}
 
 @router.get("/risk/monitor")
-def risk_monitor(limit: int = Query(25, ge=1, le=100), p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
+def risk_monitor(limit: int = Query(25, ge=1, le=100), data: Scope = "production", p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
     ws = p.workspace_id; th = load_config(db, ws).risk_alert_threshold
-    rows = db.scalars(select(TraceRow).where(TraceRow.workspace_id == ws, TraceRow.risk_score >= th).order_by(TraceRow.risk_score.desc(), TraceRow.updated_at.desc()).limit(limit)).all(); out = []
+    rows = db.scalars(scoped(select(TraceRow).where(TraceRow.workspace_id == ws, TraceRow.risk_score >= th), data).order_by(TraceRow.risk_score.desc(), TraceRow.updated_at.desc()).limit(limit)).all(); out = []
     for t in rows:
         top = db.scalar(select(RiskPredictionRow).where(RiskPredictionRow.workspace_id == ws, RiskPredictionRow.trace_id == t.trace_id).order_by(RiskPredictionRow.score.desc()))
         out.append({"trace_id": t.trace_id, "agent_name": t.agent_name, "task": t.task, "outcome": t.outcome, "risk_score": t.risk_score, "mode": t.mode, "blocked_actions": t.blocked_actions, "updated_at": t.updated_at,
@@ -275,9 +295,10 @@ def risk_monitor(limit: int = Query(25, ge=1, le=100), p: Principal = Depends(re
     return {"threshold": th, "items": out}
 
 @router.get("/findings")
-def list_findings(severity: str | None = None, category: str | None = None, trace_id: str | None = None, source: str | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0),
+def list_findings(severity: str | None = None, category: str | None = None, trace_id: str | None = None, source: str | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0), data: Scope = "production",
                   p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
-    q = select(FindingRow).where(FindingRow.workspace_id == p.workspace_id)
+    q = select(FindingRow).where(FindingRow.workspace_id == p.workspace_id); fc = by_trace(FindingRow.trace_id, p.workspace_id, data)
+    if fc is not None: q = q.where(fc)
     for col, v in ((FindingRow.severity, severity), (FindingRow.category, category), (FindingRow.trace_id, trace_id), (FindingRow.source, source)):
         if v: q = q.where(col == v)
     total = db.scalar(select(func.count()).select_from(q.subquery())); rows = list(db.scalars(q.limit(5000)))
@@ -287,15 +308,52 @@ def list_findings(severity: str | None = None, category: str | None = None, trac
 
 class AgentIn(BaseModel):
     name: str = Field(min_length=1, max_length=128); description: str = Field(default="", max_length=500); environment: str = Field(default="production", max_length=32)
+@router.get("/agents/starter")
+def agent_starter(request: Request, name: str = Query(min_length=1, max_length=128), p: Principal = Depends(needs("connect_agents"))):
+    """A ready-to-run one-file starter for a person with no coding background. The page puts the key in; it is never sent here."""
+    server = os.getenv("PUBLIC_API_URL") or str(request.base_url).rstrip("/")
+    return {**starter_file(name, server, "PASTE_YOUR_KEY_HERE"), "server": server}
+
 @router.get("/agents")
-def agents(p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
-    ws = p.workspace_id; ts = list(db.scalars(select(TraceRow).where(TraceRow.workspace_id == ws))); out = []
+def agents(data: Scope = "production", p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
+    ws = p.workspace_id; every = list(db.scalars(select(TraceRow).where(TraceRow.workspace_id == ws))); ts = list(db.scalars(scoped(select(TraceRow).where(TraceRow.workspace_id == ws), data))); out = []
     for a in db.scalars(select(AgentRow).where(AgentRow.workspace_id == ws).order_by(AgentRow.name)):
-        mine = [t for t in ts if t.agent_name == a.name]
-        out.append({"id": a.id, "name": a.name, "description": a.description, "environment": a.environment, "last_seen_at": a.last_seen_at, "runs": len(mine), "flagged_runs": sum(t.status == "flagged" for t in mine),
+        mine = [t for t in ts if t.agent_name == a.name]; tests = [t for t in every if t.agent_name == a.name and t.origin in SYNTHETIC]
+        if data == "synthetic" and not mine: continue
+        if data == "production" and (a.origin in SYNTHETIC) and not mine: continue      # an agent that only exists because of demo or sample runs is not a real agent
+        recent = sorted(mine, key=lambda t: t.created_at, reverse=True)[:3]; last = recent[0].created_at if recent else None
+        if last is not None and last.tzinfo is None: last = last.replace(tzinfo=timezone.utc)
+        connection = ("quiet" if last and (datetime.now(timezone.utc) - last).days >= AGENT_QUIET_DAYS else "connected") if mine else "test_only" if tests else "waiting"
+        open_problems = [f for f in db.scalars(select(FindingRow).where(FindingRow.workspace_id == ws, FindingRow.resolved_at.is_(None), FindingRow.trace_id.in_([t.trace_id for t in mine] or [""])))]
+        out.append({"integration": a.integration, "connection": connection, "quiet_after_days": AGENT_QUIET_DAYS, "open_problems": len(open_problems), "open_serious": sum(f.severity in P.SERIOUS for f in open_problems),
+                    "recent_activity": [{"trace_id": t.trace_id, "headline": t.headline or t.task, "outcome": t.outcome, "status": t.status, "at": t.created_at} for t in recent],
+                    "id": a.id, "name": a.name, "description": a.description, "environment": a.environment, "last_seen_at": a.last_seen_at, "origin": a.origin or "production", "test_runs": len(tests), "runs": len(mine), "flagged_runs": sum(t.status == "flagged" for t in mine),
                     "blocked_actions": sum(t.blocked_actions for t in mine), "avg_risk": round(sum(t.risk_score for t in mine) / len(mine), 1) if mine else None})
     return {"items": out}
 @router.post("/agents", status_code=201)
-def register_agent(b: AgentIn, p: Principal = Depends(require("member")), db: Session = Depends(get_db)):
+def register_agent(b: AgentIn, p: Principal = Depends(needs("connect_agents")), db: Session = Depends(get_db)):
     if db.scalar(select(AgentRow).where(AgentRow.workspace_id == p.workspace_id, AgentRow.name == b.name)): raise HTTPException(409, "An agent with this name is already registered.")
     a = AgentRow(workspace_id=p.workspace_id, name=b.name, description=b.description, environment=b.environment); db.add(a); db.commit(); return {"id": a.id, "name": a.name}
+
+
+class ResolveIn(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
+
+@router.get("/problems")
+def problems(group: str | None = Query(None, pattern="^(critical|warning|resolved)$"), agent: str | None = None, limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0), data: Scope = "production",
+             p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
+    return P.list_problems(db, p.workspace_id, data, group, agent, limit, offset)
+
+@router.post("/problems/{fid}/resolve")
+def resolve_problem(fid: str, b: ResolveIn, p: Principal = Depends(needs("resolve_problems")), db: Session = Depends(get_db)):
+    if P.resolve(db, p.workspace_id, fid, p.email, b.note) is None: raise HTTPException(404, "Problem not found.")
+    db.commit(); audit(db, p, "problem_resolved", fid, {"note": b.note}); return {"resolved": True}
+
+@router.post("/problems/{fid}/reopen")
+def reopen_problem(fid: str, p: Principal = Depends(needs("resolve_problems")), db: Session = Depends(get_db)):
+    if P.reopen(db, p.workspace_id, fid) is None: raise HTTPException(404, "Problem not found.")
+    db.commit(); audit(db, p, "problem_reopened", fid); return {"resolved": False}
+
+@router.get("/activity/timeline")
+def activity_timeline(runs: int = Query(15, ge=1, le=50), offset: int = Query(0, ge=0), data: Scope = "production", p: Principal = Depends(require("viewer")), db: Session = Depends(get_db)):
+    return TL.build(db, p.workspace_id, data, runs, offset)

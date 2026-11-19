@@ -22,6 +22,8 @@ class AgentRow(Base):
     name: Mapped[str] = mapped_column(String(128))
     description: Mapped[str] = mapped_column(String(500), default="")
     environment: Mapped[str] = mapped_column(String(32), default="production")
+    origin: Mapped[str | None] = mapped_column(String(16), default="production", index=True)   # production | demo | sample | starter: only production counts as real activity
+    integration: Mapped[str | None] = mapped_column(String(16), nullable=True)      # sdk | api | starter_file | sample: how this agent sends its runs
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -31,6 +33,7 @@ class TraceRow(Base):
     workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id"), primary_key=True)
     trace_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     agent_name: Mapped[str] = mapped_column(String(128), index=True)
+    origin: Mapped[str | None] = mapped_column(String(16), default="production", index=True)   # production | demo | sample | starter
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     n_events: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(16), default="clean", index=True)  # clean | flagged
@@ -84,6 +87,9 @@ class FindingRow(Base):
     rule: Mapped[str] = mapped_column(String(48))
     description: Mapped[str] = mapped_column(Text)
     evidence: Mapped[list] = mapped_column(JSON, default=list)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     suggested_action: Mapped[str] = mapped_column(String(64), default="")
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
@@ -203,6 +209,16 @@ class BenchmarkRow(Base):
     params: Mapped[dict] = mapped_column(JSON, default=dict)
     result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+class IdempotencyRow(Base):
+    """A write that carried an Idempotency-Key: the first answer is stored so a retry gets the same answer instead of repeating the write."""
+    __tablename__ = "idempotency_keys"
+    scope: Mapped[str] = mapped_column(String(80), primary_key=True)          # hash of the credential + the caller's key
+    fingerprint: Mapped[str] = mapped_column(String(64))                      # hash of method + path + body: the same key may not be reused for a different request
+    status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)   # null while the first request is still running
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 class UserRow(Base):
     __tablename__ = "users"

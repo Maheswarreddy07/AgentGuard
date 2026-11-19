@@ -1,0 +1,34 @@
+{
+ "id": "my-scenario-005",
+ "category": "custom",
+ "description": "[SYNTHETIC] describe what this tests",
+ "task": "What the agent was asked to do",
+ "events": [
+  {
+   "event_id": "e0",
+   "step_index": 0,
+   "event_type": "run_start"
+  },
+  {
+   "event_id": "e1",
+   "step_index": 1,
+   "event_type": "run_end",
+   "metadata": {
+    "claimed_success": true
+   }
+  }
+ ],
+ "labels": {
+  "failure_categories": [],
+  "earliest_detectable_step": null,
+  "expected_action": "none",
+  "category_steps": {}
+ },
+ "sim": {
+  "transient_fail_count": 0,
+  "corrected_args_valid": true,
+  "evidence_available": true
+ },
+ "split": null,
+ "source": null
+}

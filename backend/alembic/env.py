@@ -2,8 +2,9 @@ import os
 from alembic import context
 from sqlalchemy import create_engine
 from app.db.models import Base
+from app.db.url import database_url
 
-url = os.getenv("DATABASE_URL", "sqlite:///./agentguard.db")
+url = database_url()
 if context.is_offline_mode():
     context.configure(url=url, target_metadata=Base.metadata, literal_binds=True)
     with context.begin_transaction():

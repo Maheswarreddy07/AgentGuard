@@ -51,3 +51,44 @@ Most are tested at the API level with real HTTP-equivalent calls; there are no b
 4. **Phase 7 — Benchmark:** run the sample agents unprotected / observe / enforce and report reliability, prevention and overhead.
 5. **Research docs:** competitive analysis and differentiation from current sources.
 6. Remaining UI gaps (Integrations page, trend charts, filters), Docker/Postgres/CI verification, screenshots.
+
+
+## Role-based pages and access (added)
+- Done: role homes (Overview / My work / Admin console), per-role sidebar, page guard, capability-based API guards, one catalog for UI and API, Scenarios text served from the backend. See docs/ROLES_AND_ACCESS.md.
+- Partial: only Scenarios, My work, Admin console and the access messages take their text from the backend. Other pages still have fixed wording.
+
+
+## Simplified UI, guided connect, top menu (added)
+- Done: three-line top menu (AppMenu replaces AppSidebar), lazy-loaded pages, sections that load one after another (Staged), error boundary, four-number Overview with the old report behind a toggle, Connect-an-agent with three paths (sample run, guided download-and-run, developer message), sample-run and starter-file endpoints, login and shell text served by the backend.
+- Partial: Settings, Policies, Benchmark Lab, Traces, Trace detail, Risk, Problems, Approvals, Activity and the old full report still contain fixed wording.
+- Not verified: Docker, PostgreSQL, a live deployment, a real browser (checked with jsdom against a real backend instead).
+
+
+## Simpler pages, themes, delete, database, no hardcoded wording (added)
+- Done: light/dark/match-my-device theme (remembered), simplified Risk Monitor and Scenarios, sections that load as you scroll (Scenarios, Risk), delete buttons with confirmation for runs, agents, practice situations, safety rules, people, API keys and demo data, database status and SQLite backup in the Admin console, retention that no longer leaves orphaned findings, all screen wording served by the backend with tests that stop it creeping back.
+- Partial: infinite scroll is on Scenarios and Risk; the run list still uses pages. Keys in ui_strings.json are auto-generated.
+- Not verified: Docker, PostgreSQL (and restoring a backup), a live deployment, a real browser.
+
+
+## Audit steps 1 to 4 (added)
+See docs/AUDIT.md. Done: full audit; production vs demo/sample/starter separation (origin on runs and agents, scoped endpoints, migration 0005, labelled Demo data view); scenario library de-duplicated (189 files, 128 distinct) with split-leakage removed; benchmark results carry dataset/version metadata, denominators, Wilson intervals and sample-size warnings; incomparable runs are refused; docs regenerated. Not started: navigation redesign, Simple/Advanced mode, page redesigns, regression-from-production, a real recovery engine.
+
+
+## Steps 5 to 7 (added)
+Done: horizontal navigation with section tabs and an account menu; Simple/Advanced mode; new Home with next steps computed from recorded data. See docs/AUDIT.md section 6 for what remains.
+
+
+## Steps 8 to 11 (added)
+Done: richer Agents, Activity timeline, Problems grouped with the five answers and resolve/reopen, agent-scoped safety rules. See docs/AUDIT.md section 6.
+
+## Redesign round (single interface, Test & Improve)
+Done and tested: one interface (no Simple/Advanced, no demo switch); horizontal nav fix; Test Library / Run Tests / Results (synthetic, labelled, counts always shown with denominators);
+plain-language problems (repeats of one problem in one run shown once with a count); Activity filters; profile menu (My account, Connection settings, Settings, Team management, Sign out); Settings tabs renamed.
+Verified: backend 130 tests, frontend 67 (+3 skipped), production build, 20 pages x 3 roles against a live backend (jsdom, not a real browser).
+Not done / not verified: real recovery engine (still simulated), production-to-regression workflow, per-key rate limiting, job queue, Docker/PostgreSQL/deployment, real-browser and mobile layout checks,
+a separate "AI provider" and "Data retention" Settings tab (those controls still live inside "Safety and detection").
+
+## Production round
+Added and tested: SDK recovery that really runs (bounded retries with back-off and a time limit, schema-validated argument fixes, goal verification, consequential tools never retried); per-API-key rate limits; Idempotency-Key for writes (migration 0006);
+interrupted/concurrent test-run handling; production-to-regression tests (text removed, human confirmation, audit-logged); per-rule effect statistics; Settings tabs (AI provider, Data retention); security headers and body-size limit; non-root Docker image, Compose requires a database password and publishes only the web container.
+Verified: backend 142 tests on SQLite and on PostgreSQL 16, SDK 27, frontend 70 (+3 skipped), build, real-Chromium layout and flow checks, pg_dump restore.

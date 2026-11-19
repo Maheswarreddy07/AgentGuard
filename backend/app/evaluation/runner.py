@@ -1,8 +1,8 @@
-import time
+import hashlib, time
 from datetime import datetime, timedelta, timezone
 from app.detectors.rules import run_all
 from app.evaluation.metrics import compute
-from app.evaluation.scenario import Scenario
+from app.evaluation.scenario import Scenario, signature
 from app.detectors.scanners import annotate_event
 from app.localization.locate import localize
 from app.recovery.policy import decide, execute
@@ -43,8 +43,16 @@ def run_scenario(sc: Scenario, cfg: Config | None = None) -> dict:
 
 def statistics_mean(v): return sum(v) / len(v)
 
-def run_benchmark(scenarios: list[Scenario], seed: int = 0, cfg: Config | None = None) -> dict:
+DETECTOR_VERSION = "rules-v2"      # bump when detection rules change so runs made with different rules are never compared as if they were the same
+
+def dataset_info(scs: list[Scenario]) -> dict:
+    sigs = sorted(signature(x) for x in scs); ids = sorted(x.id for x in scs)
+    return {"name": "synthetic-v1", "kind": "synthetic", "dataset_hash": hashlib.sha256("".join(sigs).encode()).hexdigest()[:12], "scenario_set_hash": hashlib.sha256("|".join(ids).encode()).hexdigest()[:12],
+            "n_scenarios": len(scs), "n_distinct": len(set(sigs)), "splits": {sp: sum(x.split == sp for x in scs) for sp in ("dev", "validation", "test")}, "sources": {k: sum(x.source == k for x in scs) for k in sorted({x.source for x in scs})}}
+
+def run_benchmark(scenarios: list[Scenario], seed: int = 0, cfg: Config | None = None, agentguard_version: str = "unknown") -> dict:
     cfg = cfg or default_config()
     results = [run_scenario(s, cfg) for s in scenarios]
-    return {"label": "SYNTHETIC simulated benchmark; baseline outcomes are by construction of the scenarios (a failure-labelled scenario is one where the unprotected run fails). Not a real-agent evaluation.",
+    return {"label": "SYNTHETIC simulated benchmark. Baseline outcomes are by construction of the scenarios (a failure-labelled scenario is one where the unprotected run fails) and recoveries are simulated. Not an evaluation of a real agent.",
+            "dataset": dataset_info(scenarios), "versions": {"agentguard": agentguard_version, "detector": DETECTOR_VERSION}, "agent_version": None, "ran_at": datetime.now(timezone.utc).isoformat(),
             "seed": seed, "config": {"max_retries": cfg.max_retries, "retry_loop_threshold": cfg.retry_loop_threshold, "disabled_rules": sorted(cfg.disabled_rules)}, "metrics": compute(results, seed), "results": results}

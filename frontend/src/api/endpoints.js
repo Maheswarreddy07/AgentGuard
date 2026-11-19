@@ -1,5 +1,5 @@
 // Every backend endpoint the UI uses, in one place. Components never build URLs or call fetch.
-import { api } from "./client";
+import { api, downloadFile } from "./client";
 
 const qs = (o = {}) => { const s = new URLSearchParams(Object.entries(o).filter(([, v]) => v !== "" && v != null && v !== undefined)).toString(); return s ? "?" + s : ""; };
 const send = (method) => (path, body) => api(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -11,12 +11,14 @@ export const paths = {
   health: "/health", meta: "/api/v1/meta", settings: "/api/v1/settings",
   overview: (f) => "/api/v1/metrics/overview" + qs(f), trends: "/api/v1/metrics/trends",
   traces: (f) => "/api/v1/traces" + qs(f), facets: "/api/v1/traces/facets", trace: (t) => `/api/v1/traces/${id(t)}`, analysis: (t) => `/api/v1/traces/${id(t)}/analysis`, recoveryPlan: (t) => `/api/v1/traces/${id(t)}/recovery-plan`,
+  problems: (f) => "/api/v1/problems" + qs(f), timeline: (f) => "/api/v1/activity/timeline" + qs(f),
   findings: (f) => "/api/v1/findings" + qs(f), finding: (fid) => `/api/v1/findings/${id(fid)}`,
-  agents: "/api/v1/agents",
+  database: "/api/v1/admin/database", agents: "/api/v1/agents", agentStarter: (name) => `/api/v1/agents/starter${qs({ name })}`,
   riskMetrics: "/api/v1/risk/metrics", riskMonitor: (f) => "/api/v1/risk/monitor" + qs(f), riskPredictions: (f) => "/api/v1/risk/predictions" + qs(f),
   policies: "/api/v1/policies", policy: (p) => `/api/v1/policies/${p}`, policyTemplates: "/api/v1/policies/templates", policyEvaluations: (f) => "/api/v1/policies/evaluations" + qs(f),
   approvals: (f) => "/api/v1/approvals" + qs(f), approval: (a) => `/api/v1/approvals/${a}`,
   scenarios: (f) => "/api/v1/scenarios" + qs(f), scenario: (s) => `/api/v1/scenarios/${id(s)}`, scenarioTemplate: "/api/v1/scenarios/template",
+  testLibrary: "/api/v1/tests/library", benchmarkSummary: (r) => `/api/v1/benchmarks/${r}/summary`,
   benchmarks: "/api/v1/benchmarks", benchmark: (r) => `/api/v1/benchmarks/${r}`, benchmarkResults: (r, only) => `/api/v1/benchmarks/${r}/results` + qs({ only }), benchmarkCompare: (a, b) => `/api/v1/benchmark-compare${qs({ a, b })}`,
   activity: (f) => "/api/v1/history/activity" + qs(f), benchmarkHistory: "/api/v1/history/benchmarks",
   users: "/api/v1/users", apiKeys: "/api/v1/api-keys", workspace: "/api/v1/workspaces/current",
@@ -27,26 +29,31 @@ export const authApi = {
   login: (email, password) => post("/api/v1/auth/login", { email, password }), setup: (email, password, name) => post("/api/v1/auth/setup", { email, password, name }),
   changePassword: (current_password, new_password) => post("/api/v1/auth/change-password", { current_password, new_password }),
 };
-export const demoApi = { seed: () => post("/api/v1/demo/seed") };
+export const demoApi = { seed: () => post("/api/v1/demo/seed"), remove: () => del("/api/v1/demo-data") };
+export const adminApi = { backup: () => downloadFile("/api/v1/admin/database/backup") };
 export const runApi = {
+  remove: (tid) => del(`/api/v1/traces/${id(tid)}`),
   recover: (traceId, sim) => post(`/api/v1/traces/${id(traceId)}/recover`, { sim }),
   analyze: (traceId) => post(`/api/v1/traces/${id(traceId)}/analyze`),
 };
-export const agentApi = { register: (name, description = "", environment = "production") => post("/api/v1/agents", { name, description, environment }) };
+export const agentApi = { register: (name, description = "", environment = "production") => post("/api/v1/agents", { name, description, environment }), remove: (name, withRuns = false) => del(`/api/v1/agents/${id(name)}${qs({ with_runs: withRuns ? "true" : "" })}`), sampleRun: (name, sample) => post(`/api/v1/agents/${id(name)}/sample-run`, { sample }) };
 export const policyApi = {
   create: (body) => post("/api/v1/policies", body), update: (pid, body) => put(`/api/v1/policies/${pid}`, body),
-  toggle: (pid, enabled) => post(`/api/v1/policies/${pid}/toggle`, { enabled }), rollback: (pid, version) => post(`/api/v1/policies/${pid}/rollback`, { version }),
+  remove: (pid) => del(`/api/v1/policies/${pid}`), toggle: (pid, enabled) => post(`/api/v1/policies/${pid}/toggle`, { enabled }), rollback: (pid, version) => post(`/api/v1/policies/${pid}/rollback`, { version }),
   test: (definition, context) => post("/api/v1/policies/test", { definition, context }), simulate: (definition) => post("/api/v1/policies/simulate", { definition }),
 };
 export const approvalApi = { decide: (aid, decision, note) => post(`/api/v1/approvals/${aid}/decision`, { decision, note }) };
-export const scenarioApi = { add: (jsonText) => api("/api/v1/scenarios", { method: "POST", body: jsonText }) };
+export const regressionApi = { preview: (tid) => api(`/api/v1/traces/${id(tid)}/test-preview`), create: (tid, body) => api(`/api/v1/traces/${id(tid)}/to-test`, { method: "POST", body: JSON.stringify(body) }) };
+export const scenarioApi = { add: (jsonText) => api("/api/v1/scenarios", { method: "POST", body: jsonText }), remove: (sid) => del(`/api/v1/scenarios/${id(sid)}`) };
 export const benchmarkApi = {
   run: (scenario_ids, split) => post("/api/v1/benchmarks/run", { scenario_ids, split: split || undefined }), get: (rid) => api(paths.benchmark(rid)),
-  results: (rid, only) => api(paths.benchmarkResults(rid, only)), compare: (a, b) => api(paths.benchmarkCompare(a, b)),
+  results: (rid, only) => api(paths.benchmarkResults(rid, only)), summary: (rid) => api(paths.benchmarkSummary(rid)), compare: (a, b) => api(paths.benchmarkCompare(a, b)),
 };
 export const historyApi = { activity: (f) => api(paths.activity(f)) };
 export const settingsApi = { save: (values, disabled_rules) => put("/api/v1/settings", { values, disabled_rules }), cleanup: () => post("/api/v1/settings/cleanup") };
 export const teamApi = {
   createUser: (body) => post("/api/v1/users", body), updateUser: (uid, body) => patch(`/api/v1/users/${uid}`, body), resetPassword: (uid, new_password) => post(`/api/v1/users/${uid}/reset-password`, { new_password }),
-  createKey: (name) => post("/api/v1/api-keys", { name }), rotateKey: (kid) => post(`/api/v1/api-keys/${kid}/rotate`), revokeKey: (kid) => del(`/api/v1/api-keys/${kid}`),
+  createKey: (name) => post("/api/v1/api-keys", { name }), rotateKey: (kid) => post(`/api/v1/api-keys/${kid}/rotate`), revokeKey: (kid) => del(`/api/v1/api-keys/${kid}`), deleteKey: (kid) => del(`/api/v1/api-keys/${kid}?permanent=true`), deleteUser: (uid) => del(`/api/v1/users/${uid}`),
 };
+
+export const problemApi = { resolve: (fid, note) => post(`/api/v1/problems/${id(fid)}/resolve`, { note: note || null }), reopen: (fid) => post(`/api/v1/problems/${id(fid)}/reopen`) };

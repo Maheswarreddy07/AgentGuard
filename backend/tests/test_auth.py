@@ -122,12 +122,12 @@ def test_settings_validation_effects_and_reset(c):
     for bad in ({"max_retries": 0}, {"max_retries": "3"}, {"nope": 1}, {"retention_days": 99999}):
         assert c.put("/api/v1/settings", headers=H(admin), json={"values": bad}).status_code == 422
     assert c.put("/api/v1/settings", headers=H(admin), json={"values": {}, "disabled_rules": ["bogus"]}).status_code == 422
-    before = c.get("/api/v1/traces/facets", headers=H(admin)).json()["category"].get("tool_execution_failure", 0); assert before > 0
+    before = c.get("/api/v1/traces/facets?data=all", headers=H(admin)).json()["category"].get("tool_execution_failure", 0); assert before > 0
     r = c.put("/api/v1/settings", headers=H(admin), json={"values": {"max_retries": 1}, "disabled_rules": ["tool_failure"]}).json()
     assert r["changes"] and [f for f in r["fields"] if f["key"] == "max_retries"][0]["value"] == 1
-    assert c.get("/api/v1/traces/facets", headers=H(admin)).json()["category"].get("tool_execution_failure", 0) == 0     # rule off -> summaries refreshed
+    assert c.get("/api/v1/traces/facets?data=all", headers=H(admin)).json()["category"].get("tool_execution_failure", 0) == 0     # rule off -> summaries refreshed
     c.put("/api/v1/settings", headers=H(admin), json={"values": {"max_retries": None}, "disabled_rules": []})
-    assert c.get("/api/v1/traces/facets", headers=H(admin)).json()["category"]["tool_execution_failure"] == before
+    assert c.get("/api/v1/traces/facets?data=all", headers=H(admin)).json()["category"]["tool_execution_failure"] == before
     assert [f for f in c.get("/api/v1/settings", headers=H(admin)).json()["fields"] if f["key"] == "max_retries"][0]["modified"] is False
 
 def test_retry_limit_setting_changes_recovery(c):
@@ -141,7 +141,7 @@ def test_retry_limit_setting_changes_recovery(c):
 def test_cleanup_endpoint_and_template_and_previews(c):
     admin = setup_admin(c); c.post("/api/v1/demo/seed", headers=H(admin))
     assert c.post("/api/v1/settings/cleanup", headers=H(admin)).json()["deleted_traces"] == 0   # retention off
-    t = c.get("/api/v1/traces?limit=1", headers=H(admin)).json()["items"][0]; assert t["preview"] and set(t["preview"][0]) == {"t", "s"}
+    t = c.get("/api/v1/traces?limit=1&data=all", headers=H(admin)).json()["items"][0]; assert t["preview"] and set(t["preview"][0]) == {"t", "s"}
     sc = c.get("/api/v1/scenarios", headers=H(admin)).json()["items"][0]; assert sc["preview"]
     tpl = c.get("/api/v1/scenarios/template", headers=H(admin)).json(); assert c.post("/api/v1/scenarios", headers=H(admin), json=tpl).status_code == 201
 
@@ -149,3 +149,84 @@ def test_bootstrap_admin_from_env(monkeypatch, tmp_path):
     monkeypatch.setenv("ADMIN_EMAIL", "root@x.io"); monkeypatch.setenv("ADMIN_PASSWORD", PW)
     c = TestClient(create_app("sqlite:///:memory:", tmp_path, auth_required=True))
     assert not c.get("/api/v1/auth/status").json()["setup_required"] and c.post("/api/v1/auth/login", json={"email": "root@x.io", "password": PW}).status_code == 200
+
+
+def test_access_catalog_matches_what_the_api_enforces(c):
+    """The UI hides what the role cannot do; the API must refuse the same things (one list, two enforcers)."""
+    from app.catalog import CAPABILITIES, PAGES, ROLES
+    admin = setup_admin(c); tokens = {"admin": admin, "viewer": make_user(c, admin, "viewer"), "member": make_user(c, admin, "member")}
+    for role, tok in tokens.items():
+        a = c.get("/api/v1/meta", headers=H(tok)).json()["access"]
+        assert a["role"] == role and a["home"] == next(r["home"] for r in ROLES if r["key"] == role) and a["home"] in a["pages"]
+        for cap, info in CAPABILITIES.items():
+            assert a["capabilities"][cap] == ({"viewer": 1, "member": 2, "admin": 3}[role] >= {"viewer": 1, "member": 2, "admin": 3}[info["min_role"]])
+        assert {i["path"] for g in a["sections"] for i in g["tabs"]} | {i["path"] for i in a["profile"]} == {p["path"] for p in PAGES if {"viewer": 1, "member": 2, "admin": 3}[role] >= {"viewer": 1, "member": 2, "admin": 3}[p["min_role"]]}
+    probes = {"decide_approvals": ("post", "/api/v1/approvals/1/decision"), "connect_agents": ("post", "/api/v1/agents"), "load_demo": ("post", "/api/v1/demo/seed"), "run_benchmark": ("post", "/api/v1/benchmarks/run"),
+              "add_scenario": ("post", "/api/v1/scenarios"), "edit_policies": ("post", "/api/v1/policies"), "manage_team": ("post", "/api/v1/users"), "manage_keys": ("post", "/api/v1/api-keys"), "change_settings": ("post", "/api/v1/settings/cleanup")}
+    for cap, (method, path) in probes.items():
+        for role, tok in tokens.items():
+            code = getattr(c, method)(path, headers=H(tok), json={}).status_code
+            allowed = c.get("/api/v1/meta", headers=H(tok)).json()["access"]["capabilities"][cap]
+            assert (code != 403) == allowed, (cap, role, code)
+
+
+def test_sample_run_and_starter_file(c):
+    admin = setup_admin(c); member, viewer = make_user(c, admin, "member"), make_user(c, admin, "viewer")
+    r = c.post("/api/v1/agents/orders-agent/sample-run", headers=H(viewer), json={"sample": "normal"}); assert r.status_code == 403
+    for key, expect_problem in (("normal", False), ("no_approval", True), ("stuck", True)):
+        r = c.post("/api/v1/agents/orders-agent/sample-run", headers=H(member), json={"sample": key}); assert r.status_code == 201, r.text
+        b = r.json(); assert b["simulated"] and b["trace_id"].startswith("sample-") and (b["findings"] > 0) == expect_problem
+    assert c.post("/api/v1/agents/orders-agent/sample-run", headers=H(member), json={"sample": "nope"}).status_code == 404
+    assert all(a["name"] != "orders-agent" for a in c.get("/api/v1/agents", headers=H(member)).json()["items"])                 # sample runs are not production activity: no real agent appears
+    ag = {a["name"]: a for a in c.get("/api/v1/agents?data=synthetic", headers=H(member)).json()["items"]}; assert ag["orders-agent"]["runs"] == 3 and ag["orders-agent"]["origin"] == "sample"
+    assert c.get("/api/v1/traces", headers=H(member)).json()["total"] == 0 and c.get("/api/v1/traces?data=synthetic", headers=H(member)).json()["total"] == 3
+    f = c.get("/api/v1/agents/starter?name=orders agent", headers=H(member)); assert f.status_code == 200
+    body = f.json(); assert body["filename"] == "agentguard_orders-agent.py" and "PASTE_YOUR_KEY_HERE" in body["content"] and "/api/v1/traces" in body["content"]; compile(body["content"], body["filename"], "exec")
+    assert c.get("/api/v1/agents/starter?name=x", headers=H(viewer)).status_code == 403
+    metas = c.get("/api/v1/meta", headers=H(member)).json(); assert {x["key"] for x in metas["sample_runs"]} >= {"normal", "stuck"} and all("failure" not in x for x in metas["sample_runs"])
+
+
+def test_deleting_things_is_role_checked_complete_and_audited(c, app, tmp_path):
+    admin = setup_admin(c); member, viewer = make_user(c, admin, "member"), make_user(c, admin, "viewer")
+    for k in ("normal", "no_approval"): assert c.post("/api/v1/agents/orders-agent/sample-run", headers=H(member), json={"sample": k}).status_code == 201
+    runs = c.get("/api/v1/traces?data=all", headers=H(admin)).json()["items"]; flagged = next(r for r in runs if r["status"] == "flagged")["trace_id"]
+    assert c.delete(f"/api/v1/traces/{flagged}", headers=H(member)).status_code == 403 and c.delete(f"/api/v1/traces/{flagged}", headers=H(viewer)).status_code == 403
+    assert c.get("/api/v1/findings?data=all", headers=H(admin)).json()["total"] > 0
+    assert c.delete(f"/api/v1/traces/{flagged}", headers=H(admin)).json() == {"deleted": 1}
+    assert c.get(f"/api/v1/traces/{flagged}", headers=H(admin)).status_code == 404 and c.get("/api/v1/findings?data=all", headers=H(admin)).json()["total"] == 0      # nothing orphaned
+    assert c.delete(f"/api/v1/traces/{flagged}", headers=H(admin)).status_code == 404
+    assert c.delete("/api/v1/agents/orders-agent", headers=H(admin)).status_code == 409                                  # still has a run
+    r = c.delete("/api/v1/agents/orders-agent?with_runs=true", headers=H(admin)); assert r.status_code == 200 and r.json()["runs_deleted"] == 1
+    assert all(a["name"] != "orders-agent" for a in c.get("/api/v1/agents?data=all", headers=H(admin)).json()["items"])
+    # demo data
+    assert c.post("/api/v1/demo/seed", headers=H(admin)).status_code == 200 and c.get("/api/v1/traces?data=all", headers=H(admin)).json()["total"] > 0
+    assert c.delete("/api/v1/demo-data", headers=H(member)).status_code == 403
+    assert c.delete("/api/v1/demo-data", headers=H(admin)).json()["deleted"] > 0 and c.get("/api/v1/traces?data=all", headers=H(admin)).json()["total"] == 0
+    # own scenarios only
+    sc = c.get("/api/v1/scenarios/template", headers=H(member)).json(); sc["id"] = "mine-001"
+    assert c.post("/api/v1/scenarios", headers=H(member), json=sc).status_code == 201
+    assert c.delete("/api/v1/scenarios/mine-001", headers=H(viewer)).status_code == 403
+    builtin = next(s["id"] for s in c.get("/api/v1/scenarios", headers=H(member)).json()["items"] if s["source"] == "builtin"); assert c.delete(f"/api/v1/scenarios/{builtin}", headers=H(member)).status_code == 409
+    assert c.delete("/api/v1/scenarios/..%2F..%2Fx", headers=H(member)).status_code in (404, 405) and c.delete("/api/v1/scenarios/mine-001", headers=H(member)).status_code == 200
+    assert c.delete("/api/v1/scenarios/mine-001", headers=H(member)).status_code == 404
+    # people and keys
+    me = next(u for u in c.get("/api/v1/users", headers=H(admin)).json()["items"] if u["email"] == "admin@x.io")
+    assert c.delete(f"/api/v1/users/{me['id']}", headers=H(admin)).status_code == 409                                        # not yourself, not the last admin
+    v = next(u for u in c.get("/api/v1/users", headers=H(admin)).json()["items"] if u["email"] == "viewer@x.io")
+    assert c.delete(f"/api/v1/users/{v['id']}", headers=H(member)).status_code == 403 and c.delete(f"/api/v1/users/{v['id']}", headers=H(admin)).status_code == 200
+    assert c.get("/api/v1/auth/me", headers=H(viewer)).status_code == 401
+    k = c.post("/api/v1/api-keys", headers=H(admin), json={"name": "k"}).json()
+    assert c.delete(f"/api/v1/api-keys/{k['id']}?permanent=true", headers=H(admin)).status_code == 409                       # revoke first
+    assert c.delete(f"/api/v1/api-keys/{k['id']}", headers=H(admin)).status_code == 200 and c.delete(f"/api/v1/api-keys/{k['id']}?permanent=true", headers=H(admin)).status_code == 200
+    assert all(x["id"] != k["id"] for x in c.get("/api/v1/api-keys", headers=H(admin)).json()["items"])
+    acts = {e["action"] for e in c.get("/api/v1/history/activity?limit=200", headers=H(admin)).json()["items"]}; assert {"run_deleted", "agent_deleted", "scenario_deleted", "user_deleted", "api_key_deleted", "demo_data_removed"} <= acts
+
+
+def test_database_status_and_backup(tmp_path):
+    shutil.copytree(ROOT / "v1", tmp_path / "v1")
+    c = TestClient(create_app(f"sqlite:///{tmp_path / 'live.db'}", tmp_path, auth_required=True)); admin = setup_admin(c); member = make_user(c, admin, "member")
+    assert c.get("/api/v1/admin/database", headers=H(member)).status_code == 403 and c.get("/api/v1/admin/database/backup", headers=H(member)).status_code == 403
+    info = c.get("/api/v1/admin/database", headers=H(admin)).json(); assert info["engine"] == "sqlite" and info["backup_supported"] and info["counts"]["users"] == 2 and info["size_bytes"] > 0
+    r = c.get("/api/v1/admin/database/backup", headers=H(admin)); assert r.status_code == 200 and r.content[:15] == b"SQLite format 3"
+    mem = TestClient(create_app("sqlite:///:memory:", tmp_path, auth_required=True)); a2 = setup_admin(mem)
+    assert mem.get("/api/v1/admin/database/backup", headers=H(a2)).status_code == 501

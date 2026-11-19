@@ -1,48 +1,62 @@
 import { useState } from "react";
+import { fill } from "../hooks/context";
 import { CopyButton } from "../ui";
+import { useT } from "../hooks/context";
 
-const STEPS = ["Name your agent", "Get a key", "Add the code", "Check the connection"];
-
-/** Four-step guide to connect an agent. Everything it needs arrives as props; the page does the API work. */
-export default function IntegrationWizard({ agentName, onAgentNameChange, onRegister, registered, apiKey, onCreateKey, canCreateKey, install, snippet, connection, onCheck, busy, error }) {
-  const [step, setStep] = useState(0);
-  const filled = snippet.replace("YOUR_API_KEY", apiKey?.key ?? "YOUR_API_KEY").replace("AGENT_NAME", agentName || "my-agent");
-  const go = (n) => setStep(Math.max(0, Math.min(STEPS.length - 1, n)));
+/**
+ * Guided path for connecting your own agent, for someone who does not write code.
+ * Everything it says comes from `text` (the server's connect.mine text); the page does the API work.
+ */
+export default function IntegrationWizard({ text: t, labels, agentName, onAgentNameChange, onRegister, registered, apiKey, onCreateKey, canCreateKey, pastedKey, onPasteKey, starter, onDownload, connection, onCheck, busy, error, onSeeRuns, onDeveloper }) {
+  const txt = useT("integration_wizard");
+  const [step, setStep] = useState(0), steps = t.steps, cur = steps[step], hasKey = Boolean(apiKey || pastedKey?.trim());
+  const go = (n) => setStep(Math.max(0, Math.min(steps.length - 1, n)));
+  const nav = (back, next) => <div className="row">{back != null && <button className="btn" onClick={() => go(back)}>{labels.back}</button>}{next}</div>;
   return (
     <section className="card wizard">
-      <ol className="wiz-steps" aria-label="Steps">
-        {STEPS.map((s, i) => <li key={s} className={i === step ? "on" : i < step ? "done" : ""}><button onClick={() => go(i)} aria-current={i === step ? "step" : undefined}><span className="num">{i < step ? "✓" : i + 1}</span>{s}</button></li>)}
+      <h2 className="card-t">{t.title}</h2>
+      <ol className="wiz-steps" aria-label={t.title}>
+        {steps.map((s, i) => <li key={s.key} className={i === step ? "on" : i < step ? "done" : ""}><button onClick={() => go(i)} aria-current={i === step ? "step" : undefined}><span className="num">{i < step ? "✓" : i + 1}</span>{s.title}</button></li>)}
       </ol>
       {error && <div role="alert" className="alert">{error}</div>}
 
-      {step === 0 && <div className="stack">
-        <p>Give the agent a short name. It shows up in every run, problem and report.</p>
-        <label className="field">Agent name<input value={agentName} onChange={(e) => onAgentNameChange(e.target.value)} placeholder="support-agent" /></label>
-        <div className="row"><button className="btn primary" disabled={busy || !agentName.trim()} onClick={async () => { if (await onRegister()) go(1); }}>{registered ? "Continue" : "Register this agent"}</button>{registered && <span className="okt">✓ “{agentName}” is registered</span>}</div>
+      {cur.key === "name" && <div className="stack">
+        <p>{cur.body}</p>
+        <label className="field">{labels.agent_label}<input value={agentName} onChange={(e) => onAgentNameChange(e.target.value)} placeholder={labels.agent_placeholder} /><span className="muted small">{labels.agent_hint}</span></label>
+        <div className="row"><button className="btn primary" disabled={busy || !agentName.trim()} onClick={async () => { if (await onRegister()) go(1); }}>{registered ? labels.next : cur.button}</button>{registered && <span className="okt">✓ {fill(cur.done, { name: agentName })}</span>}</div>
       </div>}
 
-      {step === 1 && <div className="stack">
-        <p>The agent uses a key to prove who it is. A key can only send runs and ask for decisions — it cannot read your data.</p>
-        {apiKey ? <div className="keybox" role="status"><b>Copy this key now — it will not be shown again:</b><code>{apiKey.key}</code><CopyButton text={apiKey.key} /></div>
-          : <button className="btn primary" disabled={busy || !canCreateKey} onClick={onCreateKey}>Create a key for “{agentName || "this agent"}”</button>}
-        {!canCreateKey && !apiKey && <p className="muted small">Only admins can create keys. Ask an admin for one, then continue.</p>}
-        <div className="row"><button className="btn" onClick={() => go(0)}>Back</button><button className="btn primary" onClick={() => go(2)}>Continue</button></div>
+      {cur.key === "key" && <div className="stack">
+        <p>{cur.body}</p>
+        {apiKey ? <div className="keybox" role="status"><b>{cur.once}</b><code>{apiKey}</code><CopyButton text={apiKey} /></div>
+          : canCreateKey ? <button className="btn primary" disabled={busy} onClick={onCreateKey}>{cur.button}</button>
+          : <p className="muted">{cur.locked}</p>}
+        {!apiKey && <label className="field">{cur.paste_label}<input value={pastedKey} onChange={(e) => onPasteKey(e.target.value)} placeholder={cur.paste_placeholder} autoComplete="off" spellCheck={false} /></label>}
+        {nav(0, <button className="btn primary" disabled={!hasKey} onClick={() => go(2)}>{labels.next}</button>)}
       </div>}
 
-      {step === 2 && <div className="stack">
-        <p><b>1.</b> Install the SDK in your agent’s environment:</p>
-        <div className="row"><pre className="grow">{install}</pre><CopyButton text={install} /></div>
-        <p><b>2.</b> Wrap your agent’s tools and runs like this:</p>
-        <div className="row"><pre className="grow">{filled}</pre><CopyButton text={filled} /></div>
-        <p className="muted small">Tell AgentGuard which tools are <code>consequential</code> (money, deletion, messages) and which send data outside, so it can protect them.</p>
-        <div className="row"><button className="btn" onClick={() => go(1)}>Back</button><button className="btn primary" onClick={() => { go(3); onCheck(); }}>I’ve added it — check</button></div>
+      {cur.key === "file" && <div className="stack">
+        <p>{cur.body}</p>
+        {!hasKey && <p className="muted">{cur.need_key}</p>}
+        <div className="row"><button className="btn primary" disabled={!hasKey || !starter} onClick={onDownload}>{cur.button}{starter ? ` (${starter.filename})` : ""}</button></div>
+        {nav(1, <button className="btn" disabled={!hasKey} onClick={() => go(3)}>{labels.next}</button>)}
       </div>}
 
-      {step === 3 && <div className="stack">
+      {cur.key === "run" && <div className="stack">
+        <p>{cur.body}</p>
+        <div className="how"><h3>{cur.python_title}</h3><p>{cur.python_body}</p></div>
+        <div className="how"><h3>{cur.open_title}</h3><p>{cur.open_windows}</p><p>{cur.open_mac}</p></div>
+        <div className="how"><h3>{cur.run_title}</h3><p>{cur.run_body}</p><div className="row"><pre className="grow">{txt("python_filename", { filename: starter?.filename })}</pre><CopyButton text={txt("python_v1", { v1: starter?.filename ?? "" })} /></div><p className="muted">{cur.expect}</p></div>
+        <details className="how"><summary>{cur.trouble_title}</summary><ul className="plain">{cur.trouble.map((x) => <li key={x.q}><b>{x.q}</b><div className="muted">{x.a}</div></li>)}</ul></details>
+        {nav(2, <button className="btn primary" onClick={() => { go(4); onCheck(); }}>{cur.next}</button>)}
+      </div>}
+
+      {cur.key === "check" && <div className="stack">
         {connection.state === "connected"
-          ? <div className="callout" role="status"><b>✓ Connected.</b> “{agentName}” has sent {connection.runs} run{connection.runs === 1 ? "" : "s"}. <a href={"#/traces?agent=" + encodeURIComponent(agentName)}>See its runs →</a></div>
-          : <div className="callout" role="status"><b>Waiting for the first run from “{agentName}”…</b><div className="muted small">Run your agent once. This page checks automatically every few seconds.</div></div>}
-        <div className="row"><button className="btn" onClick={() => go(2)}>Back</button><button className="btn" onClick={onCheck}>Check again</button></div>
+          ? <div className="callout good" role="status"><b>✓ {fill(cur.ok, { name: agentName, n: connection.runs })}</b> <button className="linkbtn" onClick={onSeeRuns}>{cur.see} →</button></div>
+          : <div className="callout warn" role="status"><b>{fill(cur.waiting, { name: agentName })}</b><div className="muted small">{cur.waiting_hint}</div></div>}
+        <div className="how"><h3>{cur.next_title}</h3><p>{cur.next_body}</p><button className="btn" onClick={onDeveloper}>{cur.dev}</button></div>
+        {nav(3, <button className="btn" onClick={onCheck}>{cur.again}</button>)}
       </div>}
     </section>
   );

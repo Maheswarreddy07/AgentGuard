@@ -1,47 +1,52 @@
 import { useState } from "react";
-import { catLabel, paths, useApi, useMeta } from "../api";
+import { catLabel, fill, paths, problemApi, regressionApi, useApi, useAuth, useMeta, useText } from "../api";
+import { go } from "../router";
+import MakeTest from "../components/MakeTest";
 import EmptyState from "../components/EmptyState";
-import ProblemCard from "../components/ProblemCard";
-import ProblemDetails from "../components/ProblemDetails";
-import { Card, Chip, Drawer, State, sevColor } from "../ui";
-const PAGE = 15;
+import MoreOnScroll from "../components/MoreOnScroll";
+import { Card, SevBadge, State, Tabs, sevColor, timeAgo, useToast } from "../ui";
 
-function Detail({ id, onClose }) {
-  const d = useApi(paths.finding(id)), [sel, setSel] = useState(null);
-  const p = d.data;
+function Answer({ q, children }) { return <div className="qa"><div className="qa-q">{q}</div><div className="qa-a">{children}</div></div>; }
+
+function ProblemCard({ p, onChanged }) {
+  const t = useText("problems"), meta = useMeta(), toast = useToast(), { allowed } = useAuth();
+  const [more, setMore] = useState(false), [note, setNote] = useState(null), [busy, setBusy] = useState(false);
+  const did = p.what_agentguard_did, act = async (fn) => { setBusy(true); try { await fn(); setNote(null); onChanged(); } catch (e) { toast(e.message, "bad"); } finally { setBusy(false); } };
   return (
-    <Drawer title="Problem details" onClose={onClose}>
-      {!p ? <State loading={d.loading} error={d.error} h={160} onRetry={d.reload} /> : (<>
-        <p className="muted">Found in run <a href={"#/traces/" + p.trace_id} className="mono">{p.trace_id}</a>{p.run.task ? ` — task: ${p.run.task}` : ""}</p>
-        <ProblemDetails problem={p} evidenceEvents={p.evidence_events} selectedEventId={sel} onSelectEvent={setSel} stepOf={(eid) => p.context_events.find((e) => e.event_id === eid)?.step_index} />
-        {p.localization?.resolved && <p className="muted small">Where it shows up: first detectable at step {p.localization.first_detectable_step}{p.localization.origin_event_id ? "" : " · origin not determinable from the recorded evidence"}.</p>}
-        <a className="btn primary" href={"#/traces/" + p.trace_id}>Open the whole run →</a>
-      </>)}
-    </Drawer>
+    <article className="problem" style={{ "--c": sevColor(p.severity) }}>
+      <header className="pb-h"><SevBadge sev={p.severity} /><h3>{p.title ?? catLabel(meta, p.category)}</h3><span className={"badge " + (p.confirmed ? "ok" : "")} title={p.confirmed ? t.confirmed_hint : t.possible_hint}>{p.confirmed ? t.confirmed : t.possible}</span><span className="muted small push">{timeAgo(p.detected_at)}</span></header>
+      <Answer q={t.q.what}>{p.what_happened}{p.occurrences > 1 && <span className="muted small"> {fill(t.occurrences, { n: p.occurrences })}</span>}</Answer>
+      <Answer q={t.q.why}>{p.why_it_matters}</Answer>
+      <Answer q={t.q.agent}>{p.agent}</Answer>
+      <Answer q={t.q.did}>{fill(t.did[did.key], { tool: did.tool, rule: did.rule })}</Answer>
+      <Answer q={t.q.next}><ol className="plain">{p.next_steps.map((s) => <li key={s}>{s}</li>)}</ol></Answer>
+      {p.resolved_at && <p className="muted small">{fill(t.resolved_by, { who: p.resolved_by, when: timeAgo(p.resolved_at) })}{p.resolution_note ? ` · ${p.resolution_note}` : ""}</p>}
+      {more && <div className="evidence"><div className="muted small mono">{fill(t.rule_label, { rule: p.rule })} · {fill(t.event_label, { id: p.event_id ?? "–" })}</div><p className="muted small">{p.technical_description}</p><pre>{JSON.stringify(p.evidence, null, 1)}</pre></div>}
+      {note !== null && <div className="stack"><label className="field">{t.note_label}<input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t.note_placeholder} maxLength={500} /></label>
+        <div className="row"><button className="btn primary sm" disabled={busy} onClick={() => act(() => problemApi.resolve(p.id, note))}>{t.save}</button><button className="btn sm" onClick={() => setNote(null)}>{t.cancel}</button></div></div>}
+      <footer className="row">
+        <button className="btn sm" onClick={() => go("/traces/" + encodeURIComponent(p.trace_id))}>{t.open_run}</button>
+        {allowed("add_scenario") && <MakeTest traceId={p.trace_id} preview={regressionApi.preview} create={regressionApi.create} />}
+        <button className="linkbtn" aria-expanded={more} onClick={() => setMore(!more)}>{more ? t.evidence_hide : t.evidence_show}</button>
+        {allowed("resolve_problems") && (p.resolved_at ? <button className="btn sm" disabled={busy} onClick={() => act(() => problemApi.reopen(p.id))}>{t.reopen}</button> : note === null && <button className="btn sm" onClick={() => setNote("")}>{t.resolve}</button>)}
+      </footer>
+    </article>
   );
 }
 
-export default function Problems() {
-  const meta = useMeta(), [sev, setSev] = useState(""), [cat, setCat] = useState(""), [page, setPage] = useState(0), [open, setOpen] = useState(null);
-  const list = useApi(paths.findings({ limit: PAGE, offset: page * PAGE, severity: sev, category: cat }));
-  const reset = (f) => (v) => { f(v); setPage(0); };
+/** Problems: grouped into Critical, Warnings and Resolved. Every problem answers the same five questions. */
+export default function Problems({ params }) {
+  const t = useText("problems"), [group, setGroup] = useState("critical"), agent = params?.agent || undefined, list = useApi(paths.problems({ group, agent, limit: 100 })), all = useApi(paths.problems({ agent, limit: 1 }));
+  const counts = all.data?.counts ?? list.data?.counts ?? {}, reload = () => { list.reload(); all.reload(); };
   return (
     <div className="stack">
-      <Card>
-        <div className="chips"><span className="muted">Severity</span>
-          <Chip active={!sev} onClick={() => reset(setSev)("")}>All</Chip>
-          {[...meta.severities].reverse().map((s) => <Chip key={s} active={sev === s} color={sevColor(s)} onClick={() => reset(setSev)(sev === s ? "" : s)}>{s}</Chip>)}
-          <label className="field inline"><span className="muted">Kind</span><select value={cat} onChange={(e) => reset(setCat)(e.target.value)}><option value="">Any kind</option>{Object.keys(meta.categories).map((c) => <option key={c} value={c}>{catLabel(meta, c)}</option>)}</select></label>
-        </div>
-      </Card>
-      <State loading={list.loading && !list.data} error={list.error} h={200} onRetry={list.reload} />
+      <p className="lead">{t.intro}</p>
+      {agent && <div className="callout row"><span>{fill(t.agent_filter, { agent })}</span><button className="linkbtn" onClick={() => go("/problems")}>{t.clear_filter}</button></div>}
+      <Tabs value={group} onChange={setGroup} tabs={["critical", "warning", "resolved"].map((k) => ({ key: k, label: t.tabs[k], badge: counts[k] ?? 0 }))} />
+      <State loading={list.loading && !list.data} error={list.error} h={180} onRetry={list.reload} />
       {list.data && (list.data.items.length === 0
-        ? <EmptyState icon="✅" title="No problems found" ><p className="muted">{sev || cat ? "Nothing matches these filters." : "Nothing has gone wrong yet."}</p></EmptyState>
-        : (<>
-          <div className="stack">{list.data.items.map((p) => <ProblemCard key={p.id} problem={p} onOpen={(x) => setOpen(x.id)} />)}</div>
-          <div className="pager"><span className="muted">Showing {page * PAGE + 1}–{Math.min((page + 1) * PAGE, list.data.total)} of {list.data.total}</span>
-            <button className="btn" disabled={page === 0} onClick={() => setPage(page - 1)}>← Previous</button><button className="btn" disabled={(page + 1) * PAGE >= list.data.total} onClick={() => setPage(page + 1)}>Next →</button></div></>))}
-      {open && <Detail id={open} onClose={() => setOpen(null)} />}
+        ? <EmptyState icon="✅" title={(counts.critical ?? 0) + (counts.warning ?? 0) + (counts.resolved ?? 0) === 0 ? t.empty_none : t.empty_group[group]} />
+        : <MoreOnScroll items={list.data.items} step={10}>{(rows) => <div className="problems">{rows.map((p) => <ProblemCard key={p.id} p={p} onChanged={reload} />)}</div>}</MoreOnScroll>)}
     </div>
   );
 }

@@ -1,52 +1,65 @@
 import { useState } from "react";
-import { catLabel, paths, useApi, useMeta } from "../api";
-import { Caption, Card, Empty, Info, Kpi, State, SevBadge, pct, timeAgo } from "../ui";
-const OUT = { occurred: ["✓ came true", "var(--good)"], not_occurred: ["✗ did not happen", "var(--bad)"], pending: ["… run still going", "var(--mut)"] };
+import { catLabel, fill, paths, useApi, useMeta, useT, useText } from "../api";
+import { go } from "../router";
+import MoreOnScroll from "../components/MoreOnScroll";
+import { useTechnical } from "../hooks/technical";
+import { Caption, Card, Empty, Info, Kpi, SevBadge, State, pct, sevColor, timeAgo } from "../ui";
 
-function Score({ score, level }) {
-  return <span className="gauge" aria-label={`Risk ${score} of 100`}><span className="gauge-bar"><i style={{ width: score + "%", background: `var(--sev-${level}, var(--acc))` }} /></span><b>{score}</b></span>;
+function Score({ score, level, label }) {
+  return <span className="gauge" aria-label={label}><span className="gauge-bar"><i style={{ width: score + "%", background: `var(--sev-${level}, var(--acc))` }} /></span><b>{score}</b></span>;
 }
 
-export default function Risk() {
-  const meta = useMeta(), mon = useApi(paths.riskMonitor()), m = useApi(paths.riskMetrics), preds = useApi(paths.riskPredictions({ limit: 30 }));
-  const [open, setOpen] = useState(null);
-  const d = m.data?.definitions ?? {};
+function RiskyRun({ r, tech }) {
+  const meta = useMeta(), t = useText("risk"), [why, setWhy] = useState(false), p = r.prediction, act = p && meta.actions[p.recommended_action];
+  return (
+    <li className="risk-card" style={{ "--c": sevColor(p?.level) }}>
+      <div className="rc-top">{p && <SevBadge sev={p.level} />}<b>{p ? catLabel(meta, p.predicted_failure) : r.task}</b><span className="muted small">{r.agent_name} · {timeAgo(r.updated_at)}</span></div>
+      {p?.evidence[0] && <p className="rc-why">{p.evidence[0]}</p>}
+      {act && <p className="rc-do">{t.suggested} <b>{act.icon} {act.label}</b></p>}
+      <div className="row">
+        <button className="btn primary sm" onClick={() => go("/traces/" + encodeURIComponent(r.trace_id))}>{t.look}</button>
+        {p?.evidence.length > 1 && <button className="linkbtn" aria-expanded={why} onClick={() => setWhy(!why)}>{why ? t.why_hide : t.why_show}</button>}
+        {tech && <span className="muted small mono">{r.trace_id} · {fill(t.level_score, { score: r.risk_score })}</span>}
+      </div>
+      {why && <ul className="plain small">{p.evidence.map((e, i) => <li key={i}>{e}</li>)}</ul>}
+    </li>
+  );
+}
+
+function Reliability({ m, tech }) {
+  const meta = useMeta(), t = useText("risk"), preds = useApi(tech ? paths.riskPredictions({ limit: 30 }) : null), d = m.definitions ?? {}, [open, setOpen] = useState(null);
   return (
     <div className="stack">
-      <Card title="How good are the warnings?" sub="Measured on stored runs: each warning is later checked against what actually happened" right={<span className="badge">live data</span>}>
-        {m.data && (m.data.n_predictions === 0 ? <p className="muted">No warnings have been raised yet. Warnings appear when a run’s trajectory looks risky, e.g. repeated failures or an action about to break a rule.</p> : (
-          <div className="kpis">
-            <Kpi label="Warnings that came true" value={pct(m.data.precision, 0)} sub={`${m.data.n_resolved} resolved · ${m.data.n_pending} still pending`} hint={d.precision} />
-            <Kpi label="Failures warned about first" value={pct(m.data.recall, 0)} sub={`${m.data.n_failures} failures`} hint={d.recall} />
-            <Kpi label="Average head start" value={m.data.avg_lead_steps == null ? "n/a" : m.data.avg_lead_steps.toFixed(1) + " steps"} sub={m.data.warned_before_failure == null ? "" : pct(m.data.warned_before_failure, 0) + " came earlier than the failing step"} hint={d.lead} />
-            <Kpi label="Needless alarms" value={pct(m.data.false_intervention_rate, 0)} sub={`of ${m.data.n_high_resolved} high/critical warnings`} hint={d.false_intervention} />
-          </div>))}
-        <State loading={m.loading && !m.data} error={m.error} h={100} />
-        <Caption>This is a transparent, rule-based score — not a trained model. Small sample sizes are shown next to every number; treat early numbers with care.</Caption>
-      </Card>
+      <div className="kpis">
+        <Kpi label={t.kpi_right} value={pct(m.precision, 0)} sub={fill(t.kpi_right_sub, { resolved: m.n_resolved, pending: m.n_pending })} hint={d.precision} />
+        <Kpi label={t.kpi_first} value={pct(m.recall, 0)} sub={fill(t.kpi_first_sub, { n: m.n_failures })} hint={d.recall} />
+        <Kpi label={t.kpi_lead} value={m.avg_lead_steps == null ? t.kpi_lead_none : m.avg_lead_steps.toFixed(1) + " " + t.kpi_lead_unit} hint={d.lead} />
+        <Kpi label={t.kpi_false} value={pct(m.false_intervention_rate, 0)} sub={fill(t.kpi_false_sub, { n: m.n_high_resolved })} hint={d.false_intervention} />
+      </div>
+      <Caption>{t.rule_based}</Caption>
+      {tech && preds.data && (
+        <Card title={t.history_title} sub={t.history_sub}>
+          {preds.data.items.length === 0 ? <p className="muted">{t.history_empty}</p> : <div className="scroll"><table className="tbl"><thead><tr>{["score", "problem", "run", "step", "confidence", "result"].map((k) => <th key={k}>{t.cols[k]}</th>)}</tr></thead><tbody>
+            {preds.data.items.map((p) => [
+              <tr key={p.id} className="clickable" onClick={() => setOpen(open === p.id ? null : p.id)}><td><Score score={p.score} level={p.level} label={fill(t.score_label, { score: p.score })} /></td><td>{catLabel(meta, p.predicted_failure)}</td><td><a href={"#/traces/" + p.trace_id} className="mono">{p.trace_id}</a></td><td>{p.step_index}</td><td>{p.confidence}</td><td>{t.outcome[p.outcome] ?? p.outcome}</td></tr>,
+              open === p.id && <tr key={p.id + "x"}><td colSpan={6}><div className="signals"><b>{t.built}</b><ul className="plain">{p.signals.map((s, i) => <li key={i}><b>+{s.points}</b> {s.detail}</li>)}</ul></div></td></tr>])}
+          </tbody></table></div>}
+        </Card>)}
+    </div>
+  );
+}
 
-      <Card title="Runs that look risky right now" sub={mon.data ? `Risk score ${mon.data.threshold} or higher (adjustable in Settings)` : ""}>
-        <State loading={mon.loading && !mon.data} error={mon.error} h={140} />
-        {mon.data && (mon.data.items.length === 0 ? <Empty title="No risky runs" icon="✅"><p className="muted">Nothing is above the warning threshold.</p></Empty> : (
-          <ul className="risklist">{mon.data.items.map((r) => (
-            <li key={r.trace_id} className="riskrow">
-              <div className="riskrow-top"><a href={"#/traces/" + r.trace_id} className="mono">{r.trace_id}</a><span className="badge">{r.outcome}</span>{r.mode && <span className="badge">{r.mode} mode</span>}<span className="muted small">{r.agent_name}{r.task ? ` · ${r.task}` : ""} · {timeAgo(r.updated_at)}</span></div>
-              {r.prediction && <>
-                <div className="riskrow-mid"><Score score={r.risk_score} level={r.prediction.level} /><SevBadge sev={r.prediction.level} /><b>{catLabel(meta, r.prediction.predicted_failure)}</b><span className="muted">→ suggested: {meta.actions[r.prediction.recommended_action]?.label ?? r.prediction.recommended_action}</span></div>
-                <ul className="plain small">{r.prediction.evidence.slice(0, 3).map((e, i) => <li key={i}>{e}</li>)}</ul></>}
-            </li>))}</ul>))}
-      </Card>
-
-      <Card title="Warning history" sub="Every warning, and whether it turned out to be right" hint="Click a row to see exactly which signals added up to the score.">
-        <State loading={preds.loading && !preds.data} error={preds.error} h={120} />
-        {preds.data && preds.data.items.length === 0 && <p className="muted">Nothing recorded yet.</p>}
-        {preds.data && preds.data.items.length > 0 && <div className="scroll"><table className="tbl"><thead><tr><th>Score</th><th>Predicted problem</th><th>Run</th><th>Step</th><th>Confidence <Info text="How many independent signals agreed: 1 = low, 2 = medium, 3 or more = high. An ordinal label, not a probability." /></th><th>What happened</th></tr></thead><tbody>
-          {preds.data.items.map((p) => [
-            <tr key={p.id} className="clickable" onClick={() => setOpen(open === p.id ? null : p.id)}><td><Score score={p.score} level={p.level} /></td><td>{catLabel(meta, p.predicted_failure)}</td><td><a href={"#/traces/" + p.trace_id} className="mono">{p.trace_id}</a></td><td>{p.step_index}</td><td>{p.confidence}</td>
-              <td style={{ color: OUT[p.outcome]?.[1] }}>{OUT[p.outcome]?.[0] ?? p.outcome}{p.lead_steps != null ? ` (${p.lead_steps} step${p.lead_steps === 1 ? "" : "s"} ahead)` : ""}</td></tr>,
-            open === p.id && <tr key={p.id + "x"}><td colSpan={6}><div className="signals"><b>How this score was built</b><ul className="plain">{p.signals.map((s, i) => <li key={i}><b>+{s.points}</b> {s.detail} <span className="muted small">({s.name.replace(/_/g, " ")})</span></li>)}</ul></div></td></tr>])}
-        </tbody></table></div>}
-      </Card>
+/** Risk Monitor: the runs to look at first, in plain words. How reliable the warnings are is one click away. */
+export default function Risk() {
+  const t = useText("risk"), c = useText("common"), mon = useApi(paths.riskMonitor()), m = useApi(paths.riskMetrics), [tech, setTech] = useTechnical(), tt = useT("technical_details"), [more, setMore] = useState(false);
+  return (
+    <div className="stack">
+      <div className="row"><p className="lead">{t.intro}</p><button className="linkbtn push" aria-pressed={tech} onClick={() => setTech(!tech)}>{tt("title")}</button></div>
+      <State loading={mon.loading && !mon.data} error={mon.error} h={140} onRetry={mon.reload} />
+      {mon.data && (mon.data.items.length === 0 ? <Empty title={t.empty_title} icon="✅"><p className="muted">{t.empty_body}</p></Empty> : (
+        <MoreOnScroll items={mon.data.items}>{(rows) => <ul className="risklist">{rows.map((r) => <RiskyRun key={r.trace_id} r={r} tech={tech} />)}</ul>}</MoreOnScroll>))}
+      {m.data && <div className="more-row"><span className="muted">{m.data.n_resolved ? fill(t.summary_some, { pct: pct(m.data.precision, 0) }) : t.summary_none}</span><button className="linkbtn" aria-expanded={more} onClick={() => setMore(!more)}>{more ? t.reliability_hide : t.reliability_show}</button></div>}
+      {more && m.data && <Reliability m={m.data} tech={tech} />}
     </div>
   );
 }

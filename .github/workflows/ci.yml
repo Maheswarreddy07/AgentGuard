@@ -3,11 +3,28 @@ on: [push, pull_request]
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: {POSTGRES_USER: ag, POSTGRES_PASSWORD: ag, POSTGRES_DB: ag}
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U ag" --health-interval 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install -e "backend[dev]" pytest
-      - run: cd backend && python -m pytest -q
+      - run: cd backend && python -m pytest -q                       # SQLite
+      - run: cd backend && python -m pytest -q                       # the same tests on PostgreSQL
+        env: {TEST_DATABASE_URL: "postgresql+psycopg://ag:ag@localhost:5432/ag"}
+      - run: cd backend && alembic upgrade head && alembic downgrade base && alembic upgrade head      # migrations go up, down and up again
+        env: {DATABASE_URL: "postgresql+psycopg://ag:ag@localhost:5432/ag"}
       - run: cd sdk && python -m pytest -q
       - run: cd backend && python -m app.evaluation.cli run --json ../benchmarks/results/latest.json
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - run: cd frontend && npm ci && npx vitest run && npm run build

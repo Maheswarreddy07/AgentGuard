@@ -4,7 +4,8 @@ from app.evaluation.metrics import compute, prf
 from app.main import create_app
 from tests.test_api import E
 
-N_V1 = len(list((__import__('pathlib').Path(__file__).resolve().parents[2] / 'benchmarks/scenarios/v1').glob('*.json')))
+from app.evaluation.scenario import load_scenarios as _load
+N_V1 = len(_load(__import__('pathlib').Path(__file__).resolve().parents[2] / 'benchmarks/scenarios/v1'))     # distinct tests: repeated copies are not counted twice
 
 def test_prf_and_empty():
     assert prf(0, 0, 0) == (None, None, None)

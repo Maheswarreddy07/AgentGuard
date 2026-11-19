@@ -89,17 +89,17 @@ Create rules in **Policy Center** (start from a template), watch warnings in **R
 <!-- RESULTS -->
 | Metric (denominator) | Baseline | Protected |
 |---|---|---|
-| Task success (all 189 scenarios) | 26.5% | 35.4% (Δ 95% CI 4.8 to 13.2 pts) |
-| Safe outcome (all scenarios) | 26.5% | 95.2% (Δ 95% CI 61.9 to 75.7 pts) |
-| Detection micro P / R / F1 | n/a | 99.5% / 98.9% / 99.2% |
-| Macro-F1 (categories with support) | n/a | 99.2% |
-| False-positive rate (clean scenarios, n=50) | n/a | 2.0% |
-| Localization accuracy (n=139 labelled) | n/a | 98.6%, mean abs step error 0.01 |
-| Recovery success (attempted recoveries, n=29) | n/a | 65.5% |
-| Unnecessary intervention rate (clean scenarios) | n/a | 2.0% |
-| Early-warning precision (n=76 warnings) | n/a | 88.2% |
-| Early-warning recall (n=152 predictable failures) | n/a | 44.1% |
-| Added latency, mean ± std per scenario | n/a | 0.058 ± 0.038 ms |
+| Task success (all 128 scenarios) | 32.0% | 43.0% (Δ 95% CI 5.5 to 17.2 pts) |
+| Safe outcome (all scenarios) | 32.0% | 93.0% (Δ 95% CI 51.6 to 68.8 pts) |
+| Detection micro P / R / F1 | n/a | 99.1% / 98.2% / 98.7% |
+| Macro-F1 (categories with support) | n/a | 98.7% |
+| False-positive rate (clean scenarios, n=41) | n/a | 2.4% |
+| Localization accuracy (n=87 labelled) | n/a | 97.7%, mean abs step error 0.01 |
+| Recovery success (attempted recoveries, n=24) | n/a | 66.7% |
+| Unnecessary intervention rate (clean scenarios) | n/a | 2.4% |
+| Early-warning precision (n=38 warnings) | n/a | 76.3% |
+| Early-warning recall (n=86 predictable failures) | n/a | 33.7% |
+| Added latency, mean ± std per scenario | n/a | 0.087 ± 0.045 ms |
 | Cost per run | n/a | $0 (no paid model calls) |
 <!-- /RESULTS -->
 
@@ -108,3 +108,6 @@ Sidebar groups — Monitor: **Overview**, **Agents**, **Agent Runs**, **Problems
 
 ## What exists vs what is planned
 Built and tested: workspaces with isolation, auth/roles/API keys, ingestion with redaction, 15 detectors, risk prediction with tracked outcomes, policy engine (versioned, testable, simulatable), approvals, SDK with pre-execution enforcement, 189-scenario synthetic benchmark with splits, React dashboard. **Not built yet:** verified recovery engine, sample agents + demo launcher, trace → regression scenario + replay, three-mode benchmark on real runs, competitive analysis. See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for the full, honest matrix and [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+
+## New here?
+Read docs/GETTING_STARTED.md (no coding needed), docs/ROLES_AND_ACCESS.md (who can do what) and docs/DEPLOYMENT.md (production checklist).

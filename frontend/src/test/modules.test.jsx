@@ -1,12 +1,13 @@
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { setToken } from "../api";
 import App from "../App";
 
-const META = { categories: { workflow_invariant_violation: { label: "Steps out of order" }, repeated_failures: { label: "Stuck in a retry loop" } }, metrics: {}, actions: { stop: { label: "Stop the run", icon: "⛔", plain: "" }, escalate: { label: "Hand to a human", icon: "🙋", plain: "" } },
+import CAT from "./catalog.json";
+const META = { access: CAT.access.admin, ui: CAT.ui, categories: { workflow_invariant_violation: { label: "Steps out of order" }, repeated_failures: { label: "Stuck in a retry loop" } }, metrics: {}, actions: { stop: { label: "Stop the run", icon: "⛔", plain: "" }, escalate: { label: "Hand to a human", icon: "🙋", plain: "" } },
   severities: ["info", "low", "medium", "high", "critical"], severity_colors: { critical: "#f00", high: "#f90", medium: "#fe0", low: "#00f", info: "#888" },
   roles: [{ key: "viewer", label: "Viewer", plain: "" }, { key: "member", label: "Member", plain: "" }, { key: "admin", label: "Admin", plain: "" }],
   modes: { observe: "Only watch.", warn: "Warn only.", enforce: "Really stop." }, policy_actions: { BLOCK: "Stop it", REQUIRE_APPROVAL: "A human must approve", WARN: "Warn" } };
-const OPEN = { auth_required: true, setup_required: false, session_hours: 12, min_password_length: 10 };
+const OPEN = { ui: { login: CAT.ui.login, shell: CAT.ui.shell }, auth_required: true, setup_required: false, session_hours: 12, min_password_length: 10 };
 const ME = { kind: "user", id: 1, email: "ada@x.io", name: "Ada", role: "admin" };
 const SPECS = { argument_compare: { label: "An argument has a certain value", help: "Matches when an input meets a rule.", fields: [{ name: "field", label: "Argument name", kind: "text" }, { name: "op", label: "Operator", kind: "select", options: ["gt", "lt"] }, { name: "value", label: "Value", kind: "value" }] },
   tool_call_count_above: { label: "Too many tool calls", help: "Matches when a call limit is exceeded.", fields: [{ name: "limit", label: "Limit", kind: "number" }] } };
@@ -47,7 +48,7 @@ test("policy center describes rules in plain words and builds the form from the 
 
 test("only admins can switch policies on or off", async () => {
   window.location.hash = "#/policies";
-  mockApi({ ...base, "/api/v1/auth/me": { ...ME, role: "viewer" }, "/api/v1/policies": { items: [POLICY] }, "/api/v1/policies/templates": TPL });
+  mockApi({ ...base, "/api/v1/auth/me": { ...ME, role: "viewer" }, "/api/v1/meta": { ...META, access: CAT.access.viewer }, "/api/v1/policies": { items: [POLICY] }, "/api/v1/policies/templates": TPL });
   render(<App />);
   await waitFor(() => screen.getByText("limit_refunds"));
   expect(screen.getByRole("switch", { name: "Enable limit_refunds" }).disabled).toBe(true); expect(screen.getByRole("button", { name: /New policy/ }).disabled).toBe(true);
@@ -76,16 +77,17 @@ test("risk monitor explains every score and states how reliable the warnings wer
     "/api/v1/risk/monitor": { threshold: 50, items: [{ trace_id: "run-9", agent_name: "support", task: "Refund", outcome: "running", risk_score: 80, mode: "enforce", blocked_actions: 0, updated_at: "2026-01-01T00:00:00", prediction: { level: "critical", predicted_failure: "repeated_failures", confidence: "high", evidence: ["the last 3 tool results were all errors (+60)"], recommended_action: "stop", outcome: "pending", step_index: 5 } }] },
     "/api/v1/risk/predictions?limit=30": { total: 1, items: [{ id: 1, trace_id: "run-9", step_index: 5, score: 80, level: "critical", predicted_failure: "repeated_failures", confidence: "high", evidence: [], signals: [{ name: "failure_streak", points: 60, predicts: "repeated_failures", detail: "the last 3 tool results were all errors" }], recommended_action: "stop", outcome: "occurred", lead_steps: 1 }] } });
   render(<App />);
+  const R = CAT.ui.risk, C = CAT.ui.common;
   await waitFor(() => screen.getByText("Stuck in a retry loop", { selector: "b" }));
-  expect(screen.getByText("67%")).toBeTruthy(); expect(screen.getByText(/rule-based score — not a trained model/)).toBeTruthy();
-  expect(screen.getByText(/→ suggested: Stop the run/)).toBeTruthy();
-  fireEvent.click(screen.getByText("✓ came true (1 step ahead)"));
-  expect(await screen.findByText("How this score was built")).toBeTruthy(); expect(screen.getByText(/failure streak/)).toBeTruthy();
+  expect(screen.getByText(new RegExp(R.suggested))).toBeTruthy(); expect(screen.getByText(/Stop the run/)).toBeTruthy(); expect(screen.queryByText("run-9")).toBeNull();     // simple by default: no ids or scores
+  fireEvent.click(await screen.findByRole("button", { name: R.reliability_show })); expect(await screen.findByText("67%")).toBeTruthy(); expect(screen.getByText(/rule-based score/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: CAT.ui.strings.technical_details.title })); expect(await screen.findByText(/run-9/)).toBeTruthy();
+  fireEvent.click(await screen.findByText(new RegExp("came true"), { selector: "td" })); expect(await screen.findByText(R.built)).toBeTruthy(); expect(screen.getAllByText(/the last 3 tool results/).length).toBeGreaterThan(0);
 });
 
 test("navigation shows the number of approvals waiting", async () => {
   window.location.hash = "#/overview";
-  mockApi({ ...base, "/api/v1/metrics/overview": { live: { total_runs: 0, runs_with_findings: 0, clean_runs: 0, failure_rate: null, by_category: {}, category_stats: {}, by_severity: {}, recent_incidents: [] }, benchmark: null } });
+  mockApi({ ...base, "/api/v1/metrics/overview": { agents: { registered: 0, connected: 0 }, suggestions: [{ key: "connect_first_agent", path: "/integrations" }], live: { total_runs: 0, runs_with_findings: 0, clean_runs: 0, failure_rate: null, by_category: {}, category_stats: {}, by_severity: {}, recent_incidents: [] }, benchmark: null } });
   render(<App />);
-  await waitFor(() => expect(screen.getByLabelText("1 waiting")).toBeTruthy());
+  await waitFor(() => expect(screen.getAllByLabelText("1 waiting").length).toBeGreaterThan(0));
 });

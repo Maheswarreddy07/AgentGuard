@@ -1,7 +1,9 @@
+import { useText } from "./hooks/context";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import EmptyState from "./components/EmptyState";
 import LoadingState from "./components/LoadingState";
-export const GOOD = "#3ddc97", BAD = "#ff5d73", WARN = "#ff9f43", MUTED = "#8b93a7", ACCENT = "#6ea8fe";
+import { useT } from "./hooks/context";
+export const GOOD = "var(--good)", BAD = "var(--bad)", WARN = "var(--warn)", MUTED = "var(--mut)", ACCENT = "var(--acc)";   // colours follow the theme
 export const SEV = {};   // filled from the backend's /meta by applyTheme — never hardcoded here
 export function applyTheme(meta) {
   for (const k of Object.keys(SEV)) delete SEV[k];
@@ -21,9 +23,11 @@ export function timeAgo(iso) {
 export const when = (iso) => new Date(iso).toLocaleString();
 
 export function SevBadge({ sev }) {
-  return sev ? <span className="badge sev" style={{ "--c": sevColor(sev) }}>{sev}</span> : <span className="badge sev" style={{ "--c": GOOD }}>clean</span>;
+  const txt = useT("ui");
+  return sev ? <span className="badge sev" style={{ "--c": sevColor(sev) }}>{sev}</span> : <span className="badge sev" style={{ "--c": GOOD }}>{txt("clean")}</span>;
 }
-export function Info({ text }) { return <span className="info" data-tip={text} tabIndex={0} role="img" aria-label={text}>i</span>; }
+export function Info({ text }) {
+  const txt = useT("ui"); return <span className="info" data-tip={text} tabIndex={0} role="img" aria-label={text}>{txt("i")}</span>; }
 export function Card({ title, hint, right, children, className = "", sub }) {
   return (
     <section className={"card " + className}>
@@ -50,7 +54,7 @@ export function State({ loading, error, h, onRetry }) {
   if (!loading && !error) return null;
   return <LoadingState h={h} error={error} onRetry={onRetry} />;
 }
-export const chartTip = { contentStyle: { background: "#161a22", border: "1px solid #2a3140", borderRadius: 8, color: "#e8eaf0", fontSize: 12 }, cursor: { fill: "rgba(110,168,254,.08)" } };
+export const chartTip = { contentStyle: { background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--fg)", fontSize: 12 }, cursor: { fill: "var(--line)", fillOpacity: 0.35 } };
 
 export function Toggle({ checked, onChange, label, disabled }) {
   return <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} className={"switch" + (checked ? " on" : "")} onClick={() => onChange(!checked)}><i /></button>;
@@ -60,21 +64,23 @@ export function Tabs({ tabs, value, onChange }) {
 }
 /** One small square per step; red when something went wrong; ringed at `mark`. */
 export function MiniStrip({ steps = [], mark, max = 48 }) {
+  const txt = useT("ui");
   const shown = steps.slice(0, max);
   return (
-    <div className="strip" aria-label={`${steps.length} steps, ${steps.filter((s) => s.s === "bad").length} with problems`}>
-      {shown.map((s, i) => <span key={i} title={`Step ${i}: ${String(s.t).replace(/_/g, " ")}${s.s === "bad" ? " (problem)" : ""}`} className={"sq" + (s.s === "bad" ? " bad" : "") + (i === mark ? " mark" : "")} />)}
+    <div className="strip" aria-label={txt("length_steps_v2_with_problems", { length: steps.length, v2: steps.filter((s) => s.s === "bad").length })}>
+      {shown.map((s, i) => <span key={i} title={txt("step_i_v2v3", { i, v2: String(s.t).replace(/_/g, " "), v3: s.s === "bad" ? txt("problem_suffix") : "" })} className={"sq" + (s.s === "bad" ? " bad" : "") + (i === mark ? " mark" : "")} />)}
       {steps.length > max && <span className="muted">+{steps.length - max}</span>}
     </div>
   );
 }
 export function Drawer({ title, onClose, children }) {
+  const txt = useT("ui");
   const ref = useRef(null);
   useEffect(() => { ref.current?.focus(); const k = (e) => e.key === "Escape" && onClose(); window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [onClose]);
   return (
     <div className="drawer-wrap" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <aside className="drawer" role="dialog" aria-modal="true" aria-label={title}>
-        <header className="drawer-h"><h2 className="mono">{title}</h2><button ref={ref} className="btn" onClick={onClose}>Close ✕</button></header>
+        <header className="drawer-h"><h2 className="mono">{title}</h2><button ref={ref} className="btn" onClick={onClose}>{txt("close")}</button></header>
         <div className="drawer-b">{children}</div>
       </aside>
     </div>
@@ -87,7 +93,7 @@ export function ToastProvider({ children }) {
   const push = useCallback((msg, tone = "ok") => { const id = Math.random(); setItems((x) => [...x, { id, msg, tone }]); setTimeout(() => setItems((x) => x.filter((i) => i.id !== id)), 4500); }, []);
   return <ToastCtx.Provider value={push}>{children}<div className="toasts" aria-live="polite">{items.map((i) => <div key={i.id} className={"toast " + i.tone} role="status">{i.msg}</div>)}</div></ToastCtx.Provider>;
 }
-export function CopyButton({ text, label = "Copy" }) {
-  const [done, setDone] = useState(false);
-  return <button className="btn" onClick={() => { navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1500); }}>{done ? "Copied ✓" : label}</button>;
+export function CopyButton({ text, label }) {
+  const t = useText("shell"), [done, setDone] = useState(false);
+  return <button className="btn" onClick={() => { navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1500); }}>{done ? t.copied : (label ?? t.copy)}</button>;
 }
